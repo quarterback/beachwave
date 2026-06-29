@@ -1,0 +1,60 @@
+:root {
+  color-scheme: light;
+  --bright-teal-blue: #007dc3;
+  --light-blue: #b7d5d4;
+  --gunmetal: #37393a;
+  --cotton-rose: #f7c1bb;
+  --berry-lipstick: #dc136c;
+  --bg: #f8fbff;
+  --panel: rgba(255, 255, 255, 0.76);
+  --panel-strong: rgba(183, 213, 212, 0.42);
+  --text: var(--gunmetal);
+  --muted: rgba(55, 57, 58, 0.72);
+  --accent: var(--bright-teal-blue);
+  --accent-strong: #006ba7;
+  --danger: var(--berry-lipstick);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 8% 8%, rgba(247, 193, 187, 0.9), transparent 20rem),
+    radial-gradient(circle at 78% 6%, rgba(183, 213, 212, 0.85), transparent 24rem),
+    linear-gradient(135deg, #fffaf8 0%, #edf8fb 50%, #fdf2f7 100%);
+  color: var(--text);
+}
+button, input, textarea { font: inherit; }
+button { border: 0; border-radius: 999px; padding: 0.75rem 1rem; color: white; background: var(--accent); font-weight: 800; cursor: pointer; box-shadow: 0 10px 28px rgba(0, 125, 195, .22); }
+button:hover { background: var(--accent-strong); transform: translateY(-1px); }
+button.secondary { color: var(--gunmetal); background: var(--panel-strong); box-shadow: none; }
+button.danger { color: white; background: var(--danger); border: 1px solid rgba(220, 19, 108, 0.2); box-shadow: 0 10px 28px rgba(220, 19, 108, .18); }
+input, textarea { width: 100%; border: 1px solid rgba(0,125,195,.18); border-radius: 1rem; padding: .9rem 1rem; color: var(--text); background: rgba(255,255,255,.72); }
+input:focus, textarea:focus { outline: 3px solid rgba(0, 125, 195, .18); border-color: var(--bright-teal-blue); }
+label { display: grid; gap: .45rem; color: var(--muted); font-size: .9rem; font-weight: 700; }
+
+.shell { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 2rem 0 4rem; }
+.hero { display: grid; grid-template-columns: 1.2fr .8fr; gap: 1.5rem; align-items: stretch; margin-bottom: 1.5rem; }
+.card { border: 1px solid rgba(55,57,58,.08); border-radius: 1.5rem; padding: 1.25rem; background: var(--panel); box-shadow: 0 24px 80px rgba(0, 125, 195, .12); backdrop-filter: blur(14px); }
+.hero-card { position: relative; overflow: hidden; }
+.hero-card::after { content: ""; position: absolute; inset: auto -6rem -10rem auto; width: 22rem; height: 22rem; border-radius: 999px; background: rgba(247, 193, 187, .55); z-index: -1; }
+.brand-lockup { display: inline-flex; align-items: center; gap: .65rem; color: var(--gunmetal); font-weight: 900; letter-spacing: -.03em; }
+.brand-lockup img { width: 3rem; height: 3rem; border-radius: 1rem; box-shadow: 0 12px 28px rgba(0, 125, 195, .18); }
+.eyebrow { color: var(--berry-lipstick); text-transform: uppercase; letter-spacing: .14em; font-size: .78rem; font-weight: 900; }
+h1 { color: var(--bright-teal-blue); font-size: clamp(2.5rem, 6vw, 5rem); line-height: .92; margin: .4rem 0 1rem; letter-spacing: -.07em; }
+h2 { margin: 0 0 1rem; }
+p { color: var(--muted); line-height: 1.6; }
+.form-grid { display: grid; gap: 1rem; }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.status { color: var(--berry-lipstick); min-height: 1.5rem; font-weight: 800; }
+.room-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+.room { display: grid; gap: .9rem; }
+.room h3 { margin: 0; }
+.meta { display: grid; gap: .35rem; color: var(--muted); font-size: .9rem; word-break: break-all; }
+.badge { display: inline-flex; width: fit-content; align-items: center; gap: .35rem; border-radius: 999px; padding: .35rem .6rem; color: var(--bright-teal-blue); background: rgba(183,213,212,.5); font-weight: 900; font-size: .78rem; }
+.stage { display: grid; gap: .75rem; min-height: 180px; place-items: center; text-align: center; border: 1px dashed rgba(0,125,195,.35); border-radius: 1.25rem; padding: 1rem; background: linear-gradient(160deg, rgba(255,255,255,.72), rgba(183,213,212,.34)); }
+.stage strong { color: var(--accent); }
+.empty { color: var(--muted); padding: 1rem; border: 1px dashed rgba(0,125,195,.25); border-radius: 1rem; background: rgba(255,255,255,.46); }
+@media (max-width: 800px) { .hero { grid-template-columns: 1fr; } }
