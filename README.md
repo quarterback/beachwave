@@ -1,6 +1,6 @@
 # Beachwave
 
-Beachwave is an open reference implementation for live audio on ATProto. It defines protocol primitives for decentralized live audio rooms and demonstrates them in a small browser client with a beach-inspired demo brand.
+Beachwave is an open reference implementation for live audio on ATProto. It defines protocol primitives for decentralized live audio rooms and demonstrates them in a small browser client.
 
 Identity comes from ATProto via OAuth, room metadata lives in ATProto records, and media transport is handled separately by LiveKit. The browser client consumes the SDK exactly as any third-party application would.
 
