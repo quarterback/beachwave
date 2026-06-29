@@ -75,129 +75,141 @@ async function boot(): Promise<void> {
 
 function renderSignIn(message = ''): void {
   app!.innerHTML = `
-    <main class="shell landing">
-      <section class="hero">
-        <div class="card hero-card">
-          <div class="brand-lockup" aria-label="Beachwave">
-            <img src="beachwave.svg" alt="" />
-            <span>Beachwave</span>
-          </div>
-          <p class="eyebrow">Reference implementation · ATProto</p>
-          <h1 data-brand>Forkable live audio for ATProto.</h1>
-          <p>
-            Beachwave is a reference implementation for live audio rooms using
-            ATProto identity, ATProto room records, and LiveKit audio transport.
-          </p>
-          <div class="actions cta-row">
-            <a class="button" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">View the GitHub repo</a>
-            <a class="button secondary" href="#try-demo">Open the live demo</a>
-          </div>
-          <p class="muted-note">
-            The demo shows the stack working. The repo is meant to be forked,
-            deployed, and adapted.
-          </p>
-        </div>
-        <aside class="card stage" id="try-demo">
-          <div>
-            <p class="eyebrow">Open the live demo</p>
-            <h2>Sign in to try it</h2>
-            <p class="muted-note">
-              Authenticate with your ATProto account to create a room, share a
-              link, and connect audio. The demo runs the same SDK the repo ships.
+    <div class="landing">
+      <header class="lp-nav">
+        <a class="lp-brand" href="#top"><img src="beachwave.svg" alt="" /><span>Beachwave</span></a>
+        <nav class="lp-links">
+          <a href="#signin">Sign in</a>
+          <a class="lp-repo" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">GitHub repo ↗</a>
+        </nav>
+      </header>
+
+      <section class="lp-hero" id="top">
+        <div class="lp-hero-bg"></div>
+        <div class="lp-hero-inner">
+          <div class="lp-hero-copy">
+            <div class="lp-pill"><span class="lp-pill-dot"><span></span></span>Live audio on the open protocol</div>
+            <h1>Open the mic.<br /><span class="accent">Own the room.</span></h1>
+            <p class="lp-lead">
+              Beachwave is a reference implementation for live audio on ATProto. Your
+              identity and every room live in your own repository — Beachwave just hands
+              the conversation to LiveKit and gets out of the way.
             </p>
-            <form id="oauth-form" class="form-grid">
-              <label>
-                ATProto handle or DID
-                <input id="identifier" autocomplete="username" placeholder="alice.bsky.social" required />
-              </label>
-              <div class="actions">
-                <button type="submit">Sign in with ATProto</button>
+            <div class="lp-cta">
+              <a class="btn-lg" href="#signin"><img src="beachwave.svg" alt="" />Sign in with ATProto</a>
+              <a class="btn-lg ghost" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">View the GitHub repo →</a>
+            </div>
+          </div>
+          <div class="lp-preview">
+            <div class="lp-card" aria-hidden="true">
+              <div class="lp-card-top">
+                <span class="live-badge"><span class="dot"></span>LIVE</span>
+                <span class="lp-card-here">218 listening</span>
               </div>
+              <div class="lp-card-title">Lexicon Lab: designing records</div>
+              <div class="lp-card-host">hosted by maya.coastline.social</div>
+              <div class="lp-card-avatars">
+                <div class="a"><div class="avatar av-0 ring">MC</div><div class="nm">Maya</div></div>
+                <div class="a"><div class="avatar av-1">JD</div><div class="nm">June</div></div>
+                <div class="a"><div class="avatar muted">KS</div><div class="nm">Kai</div></div>
+              </div>
+              <div class="eq big">
+                <span style="animation-delay:0s"></span><span style="animation-delay:.15s"></span>
+                <span style="animation-delay:.32s"></span><span style="animation-delay:.5s"></span>
+                <span style="animation-delay:.22s"></span><span style="animation-delay:.62s"></span>
+                <span style="animation-delay:.4s"></span><span style="animation-delay:.08s"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lp-primitives">
+          <div class="lp-prim-head">
+            <h2>Three primitives. No platform.</h2>
+            <a class="accent-link" href="#signin">Try it →</a>
+          </div>
+          <div class="lp-prim-grid">
+            <div class="lp-prim">
+              <div class="lp-prim-ico" style="background:rgba(79,176,224,.16)"><i style="width:18px;height:18px;border-radius:6px;background:#4FB0E0"></i></div>
+              <h3>Identity is yours</h3>
+              <p>Sign in with your own ATProto account on any host. Every action runs against your repository, never a Beachwave server.</p>
+            </div>
+            <div class="lp-prim">
+              <div class="lp-prim-ico" style="background:rgba(247,193,187,.18)"><i style="width:18px;height:18px;border-radius:50%;background:#F7C1BB"></i></div>
+              <h3>Rooms are data</h3>
+              <p>A room is just a record in your repo — title, status, hosts. Portable, authoritative, and discoverable by any compatible client.</p>
+            </div>
+            <div class="lp-prim">
+              <div class="lp-prim-ico" style="background:rgba(220,19,108,.16)"><i style="width:18px;height:8px;border-radius:4px;background:#DC136C"></i></div>
+              <h3>Audio just flows</h3>
+              <p>The conversation is handed to LiveKit for low-latency transport. Swap the media layer anytime — the protocol doesn't care.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="signin" id="signin">
+        <div class="signin-card">
+          <div class="signin-left panel-dark">
+            <img class="signin-logo" src="beachwave.svg" alt="Beachwave" />
+            <h2>Sign in with your<br />ATProto account.</h2>
+            <p>No new account. No password held by us. We redirect to your own provider and act on your repository on your behalf.</p>
+            <ul class="signin-points">
+              <li>Browser-native, no extra install</li>
+              <li>Works with any handle on any host</li>
+              <li>Your rooms stay in your repo</li>
+            </ul>
+          </div>
+          <div class="signin-right">
+            <form id="oauth-form">
+              <label for="identifier">ATProto handle or DID</label>
+              <div class="field">
+                <span class="field-at mono">@</span>
+                <input id="identifier" autocomplete="username" placeholder="alice.bsky.social" required />
+              </div>
+              <button type="submit" class="btn-block"><img src="beachwave.svg" alt="" style="width:20px;height:20px;border-radius:5px" />Continue with ATProto</button>
             </form>
+            <div class="divider">DEVELOPER OPTIONS</div>
+            <div class="dev-box">
+              <p class="dev-note">App password &amp; offline demo are local-only fallbacks for development.</p>
+              <form id="app-password-form" class="dev-form">
+                <input id="ap-identifier" autocomplete="username" placeholder="handle or DID" />
+                <input id="ap-password" type="password" autocomplete="current-password" placeholder="app password (xxxx-xxxx-xxxx-xxxx)" />
+                <div class="dev-actions">
+                  <button type="submit" class="chip">App password</button>
+                  <button type="button" id="offline" class="chip">Offline demo</button>
+                </div>
+              </form>
+            </div>
             <p class="status" id="status" role="status">${escapeHtml(message)}</p>
           </div>
-        </aside>
-      </section>
-
-      <section class="card info">
-        <p class="eyebrow">What Beachwave does</p>
-        <h2>A working starting point for live audio on ATProto.</h2>
-        <p>
-          Beachwave gives developers a deployable loop they can inspect, fork,
-          and adapt. The hosted demo is proof the stack works end to end; the
-          repository is the reusable artifact. It includes:
-        </p>
-        <ul class="stack-list">
-          <li>Bluesky / ATProto OAuth login</li>
-          <li>ATProto room records</li>
-          <li>a <code>community.beachwave.room</code> lexicon</li>
-          <li>TypeScript SDK methods for room operations</li>
-          <li>LiveKit media integration</li>
-          <li>a browser reference client</li>
-          <li>Vercel / Netlify deployment support</li>
-        </ul>
-      </section>
-
-      <section class="info-grid">
-        <div class="card info">
-          <p class="eyebrow">How it works</p>
-          <h2>Identity, metadata, and media stay separate.</h2>
-          <ul class="plain-list">
-            <li>ATProto provides identity.</li>
-            <li>ATProto records store room metadata.</li>
-            <li>LiveKit carries the audio.</li>
-            <li>The SDK keeps repository operations out of the UI.</li>
-          </ul>
-          <p class="muted-note">
-            This separation is the central design point. The audio transport can
-            change later; the room record and client pattern are the reusable
-            pieces.
-          </p>
         </div>
-        <div class="card info">
-          <p class="eyebrow">Fork &amp; deploy</p>
-          <h2>Run your own version.</h2>
-          <p class="muted-note">
-            Clone the repo, point <code>client-metadata.json</code> at your
-            domain, and deploy the static client to Vercel or Netlify. Use it as
-            a reference implementation, a starter app, a protocol experiment, or
-            a base for other ATProto live-session tools.
-          </p>
-          <div class="actions cta-row">
-            <a class="button" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">Fork on GitHub</a>
+      </section>
+
+      <div class="lp-footer-wrap">
+        <div class="lp-footer">
+          <div class="lp-footer-brand">
+            <a class="lp-brand" href="#top"><img src="beachwave.svg" alt="" /><span>Beachwave</span></a>
+            <p>An open reference implementation for live audio on ATProto. Identity and rooms in your repository; media on LiveKit. Fork it, build your own client.</p>
+          </div>
+          <div class="lp-footer-cols">
+            <div>
+              <h4>PROTOCOL</h4>
+              <span>Room records</span>
+              <span>Identity &amp; auth</span>
+              <span>Media handoff</span>
+            </div>
+            <div>
+              <h4>PROJECT</h4>
+              <a href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">GitHub</a>
+              <a href="${GITHUB_REPO_URL}#readme" target="_blank" rel="noopener">Documentation</a>
+              <a href="${GITHUB_REPO_URL}/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+            </div>
           </div>
         </div>
-      </section>
-
-      <section class="card">
-        <details>
-          <summary>Developer options</summary>
-          <p class="muted-note">
-            OAuth is the recommended flow. These fallbacks exist for local
-            development before a client metadata document is hosted.
-          </p>
-          <form id="app-password-form" class="form-grid">
-            <label>
-              Handle or DID
-              <input id="ap-identifier" autocomplete="username" placeholder="alice.bsky.social" />
-            </label>
-            <label>
-              App password
-              <input id="ap-password" type="password" autocomplete="current-password" placeholder="xxxx-xxxx-xxxx-xxxx" />
-            </label>
-            <div class="actions">
-              <button type="submit" class="secondary">Sign in with app password</button>
-              <button type="button" id="offline" class="secondary">Continue with offline demo</button>
-            </div>
-          </form>
-        </details>
-      </section>
-
-      <footer class="landing-footer">
-        <span>Beachwave · forkable live audio reference app for ATProto</span>
-        <a href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">github.com/quarterback/beachwave</a>
-      </footer>
-    </main>
+        <div class="lp-footer-base"><span>Beachwave · open reference client</span><span>Built on ATProto + LiveKit</span></div>
+      </div>
+    </div>
   `;
 
   const status = app!.querySelector<HTMLElement>('#status')!;
@@ -247,69 +259,61 @@ async function renderApp(): Promise<void> {
     current.kind === 'oauth' ? '' : `<span class="badge mode">${current.kind === 'offline' ? 'Offline demo' : 'Dev session'}</span>`;
 
   app!.innerHTML = `
-    <main class="shell">
-      <header class="topbar card">
-        <div class="brand-lockup" aria-label="Beachwave">
-          <img src="beachwave.svg" alt="" />
-          <span>Beachwave</span>
-        </div>
-        <div class="identity">
+    <main class="app">
+      <header class="appbar">
+        <a class="lp-brand" href="#" aria-label="Beachwave"><img src="beachwave.svg" alt="" /><span>Beachwave</span></a>
+        <div class="appbar-right">
           ${modeBadge}
-          <div>
+          <div class="appbar-id">
             <strong id="identity-label"></strong>
-            <span class="muted-note" id="identity-pds"></span>
+            <span class="mono" id="identity-pds"></span>
           </div>
-          <a class="button secondary repo-link" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">GitHub repo</a>
-          <button id="sign-out" type="button" class="secondary">Sign out</button>
+          <a class="btn-sm ghost" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">GitHub repo ↗</a>
+          <button id="sign-out" type="button" class="btn-sm secondary">Sign out</button>
         </div>
       </header>
 
-      <section class="hero">
-        <div class="card">
-          <h2>Create a room</h2>
-          <form id="room-form" class="form-grid">
-            <label>
-              Room title
-              <input id="title" maxlength="120" required value="Office Hours" />
-            </label>
-            <label>
-              Description
-              <textarea id="description" maxlength="1000" rows="3">Open conversation for the community.</textarea>
-            </label>
-            ${current.kind === 'offline' ? '' : `
-            <label class="checkbox">
-              <input type="checkbox" id="announce" checked />
-              Share to my Bluesky feed
-            </label>`}
-            <div class="actions">
-              <button type="submit">Create room</button>
-              <span class="status" id="status" role="status"></span>
-            </div>
-          </form>
-        </div>
-        <aside class="card stage" id="stage">
-          <div>
-            <p class="eyebrow">Current session</p>
-            <h2>No room joined</h2>
-            <p>Create or join a room to start live audio.</p>
-          </div>
-        </aside>
+      <section class="dash-head">
+        <h1 id="welcome">Welcome back.</h1>
+        <p>Start a room, or pick up where you left off.</p>
       </section>
 
-      <section id="invite" hidden></section>
+      <section id="stage" class="stage" hidden></section>
 
-      <section class="card">
-        <div class="actions section-head">
-          <h2>Your live rooms</h2>
-          <button id="refresh" class="secondary" type="button">Refresh</button>
+      <section class="dash-grid">
+        <div class="create panel-dark">
+          <div class="create-title">Start a room</div>
+          <form id="room-form">
+            <label for="title">Room title</label>
+            <input id="title" class="field-gap" maxlength="120" required value="Office Hours" />
+            <label for="description">Description</label>
+            <textarea id="description" class="field-gap" maxlength="1000" rows="3">Open conversation for the community.</textarea>
+            ${current.kind === 'offline' ? '' : `
+            <label class="toggle">
+              <input type="checkbox" id="announce" checked />
+              <span class="track"></span>
+              Share to my Bluesky feed
+            </label>`}
+            <button type="submit" class="btn-block"><span aria-hidden="true">🎙</span>Go live</button>
+          </form>
+          <p class="status" id="status" role="status"></p>
         </div>
-        <div id="rooms" class="room-grid"></div>
+
+        <div class="your-rooms">
+          <div class="yr-head">
+            <h3>Your rooms</h3>
+            <button id="refresh" class="link-btn" type="button">Refresh</button>
+          </div>
+          <div id="rooms" class="room-list"></div>
+          <section id="invite" hidden></section>
+        </div>
       </section>
     </main>
   `;
 
   app!.querySelector<HTMLElement>('#identity-label')!.textContent = current.label;
   app!.querySelector<HTMLElement>('#identity-pds')!.textContent = current.pds ? new URL(current.pds).host : '';
+  app!.querySelector<HTMLElement>('#welcome')!.textContent = `Welcome back, ${friendlyName(current.label)}.`;
 
   app!.querySelector<HTMLButtonElement>('#sign-out')!.addEventListener('click', handleSignOut);
   app!.querySelector<HTMLButtonElement>('#refresh')!.addEventListener('click', () => void refreshRooms());
@@ -371,33 +375,39 @@ function renderRooms(): void {
 }
 
 function renderRoomCard(room: BeachwaveRoom, owned: boolean): HTMLElement {
-  const article = document.createElement('article');
-  article.className = 'card room';
+  const ended = room.record.status === 'ended';
 
+  const row = document.createElement('article');
+  row.className = `room-row${ended ? ' ended' : ''}`;
+
+  const main = document.createElement('div');
+  main.className = 'room-row-main';
+
+  const top = document.createElement('div');
+  top.className = 'room-row-top';
   const badge = document.createElement('span');
-  badge.className = 'badge';
-  badge.textContent = '● Live';
+  if (ended) {
+    badge.className = 'pill-muted';
+    badge.textContent = 'ENDED';
+  } else {
+    badge.className = 'pill-live';
+    badge.innerHTML = '<span class="dot"></span>LIVE';
+  }
+  top.append(badge);
 
-  const title = document.createElement('h3');
+  const title = document.createElement('div');
+  title.className = 'room-row-title';
   title.textContent = room.record.title;
 
-  const description = document.createElement('p');
-  description.textContent = room.record.description ?? 'No description provided.';
+  // The AT URI is shown deliberately — a room is just a record in your repo.
+  const uri = document.createElement('div');
+  uri.className = 'room-row-uri mono';
+  uri.textContent = room.uri;
 
-  const meta = document.createElement('div');
-  meta.className = 'meta';
-  meta.innerHTML = `
-    <span><strong>AT URI</strong> <code></code></span>
-    <span><strong>Media room</strong> <code></code></span>
-    <span><strong>Host</strong> <code></code></span>
-  `;
-  const codes = meta.querySelectorAll('code');
-  codes[0].textContent = room.uri;
-  codes[1].textContent = room.record.livekitRoom;
-  codes[2].textContent = room.authorDid;
+  main.append(top, title, uri);
 
   const actions = document.createElement('div');
-  actions.className = 'actions';
+  actions.className = 'room-row-actions';
 
   const joinButton = document.createElement('button');
   joinButton.type = 'button';
@@ -407,7 +417,7 @@ function renderRoomCard(room: BeachwaveRoom, owned: boolean): HTMLElement {
   const copyButton = document.createElement('button');
   copyButton.type = 'button';
   copyButton.className = 'secondary';
-  copyButton.textContent = 'Copy room link';
+  copyButton.textContent = 'Copy link';
   copyButton.addEventListener('click', () => void handleCopy(room));
 
   actions.append(joinButton, copyButton);
@@ -416,12 +426,12 @@ function renderRoomCard(room: BeachwaveRoom, owned: boolean): HTMLElement {
     const shareButton = document.createElement('button');
     shareButton.type = 'button';
     shareButton.className = 'secondary';
-    shareButton.textContent = 'Share to Bluesky';
+    shareButton.textContent = 'Share';
     shareButton.addEventListener('click', () => void handleShare(room));
     actions.append(shareButton);
   }
 
-  if (owned && canAdminister(room)) {
+  if (owned && canAdminister(room) && !ended) {
     const endButton = document.createElement('button');
     endButton.type = 'button';
     endButton.className = 'danger';
@@ -430,8 +440,8 @@ function renderRoomCard(room: BeachwaveRoom, owned: boolean): HTMLElement {
     actions.append(endButton);
   }
 
-  article.append(badge, title, description, meta, actions);
-  return article;
+  row.append(main, actions);
+  return row;
 }
 
 async function handleJoin(room: BeachwaveRoom): Promise<void> {
@@ -442,28 +452,53 @@ async function handleJoin(room: BeachwaveRoom): Promise<void> {
     await leaveMedia();
 
     const stage = app!.querySelector<HTMLElement>('#stage')!;
+    stage.hidden = false;
     stage.classList.add('active');
     stage.innerHTML = `
-      <div class="joined">
-        <p class="eyebrow">Joined room</p>
-        <h2 id="stage-title"></h2>
-        <p class="muted-note">Role: <strong id="stage-role"></strong> · <span id="stage-count">connecting…</span></p>
-        <ul id="participants" class="participants"></ul>
-        <div id="audio-unlock" class="audio-unlock" hidden></div>
-        <div id="stage-media" class="actions"></div>
-        <div id="chat" class="chat" hidden>
-          <ul id="chat-log" class="chat-log" aria-live="polite" aria-label="Room chat"></ul>
-          <form id="chat-form" class="chat-form">
-            <input id="chat-input" autocomplete="off" maxlength="500" placeholder="Message the room" aria-label="Message the room" />
-            <button type="submit">Send</button>
-          </form>
+      <div class="room">
+        <div class="room-main panel-dark">
+          <div class="room-head">
+            <div class="room-head-text">
+              <div class="room-tags">
+                <span class="live-badge"><span class="dot"></span>LIVE</span>
+                <span class="eq"><span style="animation-delay:0s"></span><span style="animation-delay:.2s"></span><span style="animation-delay:.4s"></span><span style="animation-delay:.15s"></span></span>
+              </div>
+              <h2 id="stage-title"></h2>
+              <div class="room-sub"><span id="stage-count">connecting…</span> · you joined as <strong id="stage-role"></strong></div>
+            </div>
+            <button id="copy-room" type="button" class="btn-sm ghost">Copy link</button>
+          </div>
+          <div class="room-section">
+            <div class="room-section-label" id="speakers-label">SPEAKERS</div>
+            <div id="speakers" class="speaker-grid"></div>
+          </div>
+          <div class="room-section" id="listeners-section" hidden>
+            <div class="room-section-label" id="listeners-label">LISTENERS</div>
+            <div id="listeners" class="listener-grid"></div>
+          </div>
+          <div id="audio-unlock" class="audio-unlock" hidden></div>
+          <div class="room-controls">
+            <div id="stage-media" class="room-controls-media"></div>
+            <button id="leave" class="btn-leave" type="button">Leave</button>
+          </div>
         </div>
-        <button id="leave" class="secondary" type="button">Leave room</button>
+        <aside class="room-chat panel-dark">
+          <div class="chat-head"><span class="display">Room chat</span><span class="chat-sub">backed by LiveKit data</span></div>
+          <div id="chat" class="chat" hidden>
+            <ul id="chat-log" class="chat-log" aria-live="polite" aria-label="Room chat"></ul>
+            <form id="chat-form" class="chat-form">
+              <input id="chat-input" autocomplete="off" maxlength="500" placeholder="Message the room" aria-label="Message the room" />
+              <button type="submit" class="chat-send" aria-label="Send">➤</button>
+            </form>
+          </div>
+        </aside>
       </div>
     `;
     stage.querySelector('#stage-title')!.textContent = activeRoom.record.title;
     stage.querySelector('#stage-role')!.textContent = role;
     stage.querySelector('#leave')!.addEventListener('click', () => void handleLeave());
+    stage.querySelector('#copy-room')!.addEventListener('click', () => void handleCopy(activeRoom!));
+    stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     await connectMedia(joined.livekitRoom, role);
   } catch (error) {
@@ -502,17 +537,18 @@ async function connectMedia(livekitRoom: string, role: ParticipantRole): Promise
     if (canPublish) {
       const mic = document.createElement('button');
       mic.type = 'button';
-      mic.textContent = 'Enable microphone';
+      mic.className = 'btn-mic';
+      mic.textContent = '🎙 Enable mic';
       let micOn = false;
       const applyMic = async (want: boolean): Promise<void> => {
         try {
           await mediaSession!.setMicrophoneEnabled(want);
           micOn = want;
-          mic.textContent = micOn ? 'Mute microphone' : 'Unmute microphone';
+          mic.textContent = micOn ? '🔇 Mute mic' : '🎙 Unmute mic';
         } catch (error) {
           // On mobile the auto-attempt can be rejected; the next tap is a gesture.
           micOn = false;
-          mic.textContent = 'Enable microphone';
+          mic.textContent = '🎙 Enable mic';
           setStatus(describeError(error));
         }
       };
@@ -566,30 +602,55 @@ function updateAudioUnlock(state: MediaRoomState): void {
 }
 
 function renderParticipants(state: MediaRoomState): void {
-  const list = app!.querySelector<HTMLUListElement>('#participants');
+  const speakersEl = app!.querySelector<HTMLElement>('#speakers');
+  const listenersEl = app!.querySelector<HTMLElement>('#listeners');
   const count = app!.querySelector<HTMLElement>('#stage-count');
-  if (!list || !count) return;
+  if (!speakersEl || !listenersEl || !count) return;
 
-  count.textContent = `${state.participants.length} ${state.participants.length === 1 ? 'person' : 'people'} here`;
-  list.replaceChildren(...state.participants.map((participant) => {
-    const item = document.createElement('li');
-    item.className = `participant${participant.isSpeaking ? ' speaking' : ''}`;
+  const speakers = state.participants.filter((p) => p.canSpeak);
+  const listeners = state.participants.filter((p) => !p.canSpeak);
+  const total = state.participants.length;
+  count.textContent = `${total} ${total === 1 ? 'person' : 'people'} here`;
 
-    const dot = document.createElement('span');
-    dot.className = 'speaking-dot';
-    dot.setAttribute('aria-hidden', 'true');
+  const speakersLabel = app!.querySelector<HTMLElement>('#speakers-label');
+  if (speakersLabel) speakersLabel.textContent = `SPEAKERS · ${speakers.length}`;
+  speakersEl.replaceChildren(...speakers.map((participant, index) => {
+    const item = document.createElement('div');
+    item.className = 'speaker';
 
-    const name = document.createElement('span');
-    name.className = 'participant-name';
+    const avatar = document.createElement('div');
+    avatar.className = `avatar av-${index % 4}${participant.isSpeaking ? ' ring' : ''}`;
+    avatar.textContent = initials(participant.name || participant.identity);
+
+    const name = document.createElement('div');
+    name.className = 'speaker-name';
     name.textContent = participant.name || shortDid(participant.identity);
 
-    const tag = document.createElement('span');
-    tag.className = 'participant-tag';
-    if (participant.isLocal) tag.textContent = 'you';
-    else if (!participant.canSpeak) tag.textContent = 'listener';
-    else if (participant.isSpeaking) tag.textContent = 'speaking';
+    const role = document.createElement('div');
+    role.className = `speaker-role${participant.isSpeaking ? ' live' : ''}`;
+    role.textContent = participant.isLocal ? 'you' : participant.isSpeaking ? 'speaking' : 'speaker';
 
-    item.append(dot, name, tag);
+    item.append(avatar, name, role);
+    return item;
+  }));
+
+  const section = app!.querySelector<HTMLElement>('#listeners-section');
+  const listenersLabel = app!.querySelector<HTMLElement>('#listeners-label');
+  if (section) section.hidden = listeners.length === 0;
+  if (listenersLabel) listenersLabel.textContent = `LISTENERS · ${listeners.length}`;
+  listenersEl.replaceChildren(...listeners.map((participant) => {
+    const item = document.createElement('div');
+    item.className = 'listener';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar muted';
+    avatar.textContent = initials(participant.name || participant.identity);
+
+    const name = document.createElement('div');
+    name.className = 'listener-name';
+    name.textContent = participant.name || shortDid(participant.identity);
+
+    item.append(avatar, name);
     return item;
   }));
 }
@@ -632,19 +693,28 @@ function shortDid(did: string): string {
   return did.length > 16 ? `${did.slice(0, 12)}…${did.slice(-4)}` : did;
 }
 
+/** Two-letter avatar initials from a display name or handle/DID. */
+function initials(value: string): string {
+  const cleaned = value.replace(/^@/, '').replace(/^did:[a-z]+:/, '').trim();
+  const parts = cleaned.split(/[\s._@:-]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return cleaned.slice(0, 2).toUpperCase() || '··';
+}
+
+/** First label of a handle, capitalized — for the dashboard greeting. */
+function friendlyName(label: string): string {
+  const first = label.replace(/^@/, '').split(/[.\s@]/)[0] || label;
+  return first.charAt(0).toUpperCase() + first.slice(1);
+}
+
 async function handleLeave(): Promise<void> {
   await leaveMedia();
   await leaveRoom();
   activeRoom = undefined;
   const stage = app!.querySelector<HTMLElement>('#stage')!;
   stage.classList.remove('active');
-  stage.innerHTML = `
-    <div>
-      <p class="eyebrow">Current session</p>
-      <h2>No room joined</h2>
-      <p>Create or join a room to start live audio.</p>
-    </div>
-  `;
+  stage.innerHTML = '';
+  stage.hidden = true;
 }
 
 async function leaveMedia(): Promise<void> {
@@ -715,7 +785,7 @@ async function renderPendingSharedRoom(): Promise<void> {
     const room = await getRoom(account!.client, uri);
     forgetSharedRoom();
     section.hidden = false;
-    section.className = 'card';
+    section.className = 'invite-card';
     section.innerHTML = '<p class="eyebrow">You were invited</p>';
     section.append(renderRoomCard(room, room.authorDid === account!.did));
   } catch {
