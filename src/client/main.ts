@@ -178,7 +178,7 @@ async function renderApp(): Promise<void> {
     <main class="shell">
       <header class="topbar card">
         <div class="brand-lockup" aria-label="Beachwave">
-          <img src="https://raw.githubusercontent.com/quarterback/beachwave/main/beachwave-blue.png" alt="Beachwave logo" width="48" height="48" decoding="async" />
+          <img src="beachwave.svg" alt="" />
           <span>Beachwave</span>
         </div>
         <div class="identity">

@@ -4,7 +4,7 @@ Beachwave is currently a static proof-of-concept web app. It can be deployed to 
 
 ## What the host needs to serve
 
-The demo entry point is `index.html`. The TypeScript build emits the browser JavaScript into `dist/client/main.js`, and the page loads styles from `src/client/styles.css` plus the canonical `beachwave-blue.png` favicon/logo from `https://raw.githubusercontent.com/quarterback/beachwave/main/beachwave-blue.png` so hosted previews load the user-provided asset rather than a generated local placeholder.
+The demo entry point is `index.html`. The TypeScript build emits the browser JavaScript into `dist/client/main.js`, and the page loads styles from `src/client/styles.css` plus the local `beachwave.svg` favicon/logo.
 
 Because of that layout, the current static publish directory is the repository root (`.`), not only `dist/`.
 
