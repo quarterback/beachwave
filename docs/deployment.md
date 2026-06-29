@@ -109,7 +109,9 @@ returns `{ url, token }`. `index.html` already points the client at it via:
    function, so it needs them at runtime. (GitHub secrets only reach GitHub
    Actions.)
 3. Redeploy. "Join audio" now connects microphones; hosts/speakers can publish
-   and everyone can listen.
+   and everyone can listen. The live participant list, speaking indicators, and
+   the in-room text chat (an `aria-live` accessibility feed carried over the
+   LiveKit data channel) all come with this — no extra configuration.
 
 Until the env vars are set, the endpoint returns `503` and the client surfaces
 "LiveKit is not configured on the server".

@@ -1,4 +1,5 @@
 import {
+  announceRoom,
   createRoom,
   endRoom,
   getRoom,
@@ -9,7 +10,9 @@ import {
   LiveKitMediaController,
   OAuthClient,
   type BeachwaveRoom,
+  type ChatMessage,
   type MediaController,
+  type MediaRoomState,
   type MediaSession,
   type ParticipantRole
 } from '../sdk/index.js';
@@ -38,6 +41,7 @@ let account: Account | undefined;
 let rooms: BeachwaveRoom[] = [];
 let activeRoom: BeachwaveRoom | undefined;
 let mediaSession: MediaSession | undefined;
+let mediaUnsubscribers: Array<() => void> = [];
 
 void boot();
 
@@ -203,6 +207,11 @@ async function renderApp(): Promise<void> {
               Description
               <textarea id="description" maxlength="1000" rows="3">Open conversation for the community.</textarea>
             </label>
+            ${current.kind === 'offline' ? '' : `
+            <label class="checkbox">
+              <input type="checkbox" id="announce" checked />
+              Share to my Bluesky feed
+            </label>`}
             <div class="actions">
               <button type="submit">Create room</button>
               <span class="status" id="status" role="status"></span>
@@ -245,14 +254,33 @@ async function handleCreate(event: SubmitEvent): Promise<void> {
   event.preventDefault();
   const title = app!.querySelector<HTMLInputElement>('#title')!.value;
   const description = app!.querySelector<HTMLTextAreaElement>('#description')!.value;
+  const announce = app!.querySelector<HTMLInputElement>('#announce')?.checked ?? false;
   setStatus('Publishing room record…');
   try {
-    await createRoom(account!.client, { title, description });
-    setStatus('Room created.');
+    const room = await createRoom(account!.client, { title, description });
     await refreshRooms();
+    if (announce) {
+      setStatus('Room created. Sharing to Bluesky…');
+      try {
+        await shareRoom(room);
+        setStatus('Room created and shared to your Bluesky feed.');
+      } catch (error) {
+        setStatus(`Room created. Sharing to Bluesky failed: ${describeError(error)}`);
+      }
+    } else {
+      setStatus('Room created.');
+    }
   } catch (error) {
     setStatus(describeError(error));
   }
+}
+
+async function shareRoom(room: BeachwaveRoom): Promise<void> {
+  const url = roomUrl(room);
+  await announceRoom(account!.client, {
+    text: `${room.record.title} is live on Beachwave — join: ${url}`,
+    url
+  });
 }
 
 async function refreshRooms(): Promise<void> {
@@ -315,6 +343,15 @@ function renderRoomCard(room: BeachwaveRoom, owned: boolean): HTMLElement {
 
   actions.append(joinButton, copyButton);
 
+  if (account!.kind !== 'offline') {
+    const shareButton = document.createElement('button');
+    shareButton.type = 'button';
+    shareButton.className = 'secondary';
+    shareButton.textContent = 'Share to Bluesky';
+    shareButton.addEventListener('click', () => void handleShare(room));
+    actions.append(shareButton);
+  }
+
   if (owned && canAdminister(room)) {
     const endButton = document.createElement('button');
     endButton.type = 'button';
@@ -336,12 +373,21 @@ async function handleJoin(room: BeachwaveRoom): Promise<void> {
     await leaveMedia();
 
     const stage = app!.querySelector<HTMLElement>('#stage')!;
+    stage.classList.add('active');
     stage.innerHTML = `
-      <div>
+      <div class="joined">
         <p class="eyebrow">Joined room</p>
         <h2 id="stage-title"></h2>
-        <p class="muted-note">Role: <strong id="stage-role"></strong></p>
-        <div id="stage-media"></div>
+        <p class="muted-note">Role: <strong id="stage-role"></strong> · <span id="stage-count">connecting…</span></p>
+        <ul id="participants" class="participants"></ul>
+        <div id="stage-media" class="actions"></div>
+        <div id="chat" class="chat" hidden>
+          <ul id="chat-log" class="chat-log" aria-live="polite" aria-label="Room chat"></ul>
+          <form id="chat-form" class="chat-form">
+            <input id="chat-input" autocomplete="off" maxlength="500" placeholder="Message the room" aria-label="Message the room" />
+            <button type="submit">Send</button>
+          </form>
+        </div>
         <button id="leave" class="secondary" type="button">Leave room</button>
       </div>
     `;
@@ -356,42 +402,126 @@ async function handleJoin(room: BeachwaveRoom): Promise<void> {
 }
 
 async function connectMedia(livekitRoom: string, role: ParticipantRole): Promise<void> {
-  const target = app!.querySelector<HTMLElement>('#stage-media')!;
+  const media = app!.querySelector<HTMLElement>('#stage-media')!;
+  const count = app!.querySelector<HTMLElement>('#stage-count')!;
   const canPublish = role === 'host' || role === 'speaker';
+  // The offline demo is local-only; it never connects to a real media server.
+  const controller = account!.kind === 'offline' ? undefined : mediaController;
 
-  if (!mediaController) {
-    target.innerHTML = `
+  if (!controller) {
+    count.textContent = 'audio not configured';
+    media.innerHTML = `
       <p class="muted-note">
         Media handoff target: <strong>${escapeHtml(livekitRoom)}</strong>.
-        Configure a LiveKit token endpoint to connect audio in-app.
+        Configure a LiveKit token endpoint to connect audio and chat in-app.
       </p>
     `;
     return;
   }
 
-  target.innerHTML = '<p class="muted-note">Connecting audio…</p>';
+  media.innerHTML = '<p class="muted-note">Connecting…</p>';
   try {
-    mediaSession = await mediaController.join({
+    mediaSession = await controller.join({
       livekitRoom,
       identity: account!.did,
       displayName: account!.label,
       role
     });
-    target.innerHTML = canPublish
-      ? '<button id="mic" type="button">Mute microphone</button>'
-      : '<p class="muted-note">Listening. Speaker invitations arrive here.</p>';
+
+    media.innerHTML = '';
     if (canPublish) {
+      const mic = document.createElement('button');
+      mic.type = 'button';
+      mic.textContent = 'Mute microphone';
       let muted = false;
-      const mic = target.querySelector<HTMLButtonElement>('#mic')!;
       mic.addEventListener('click', async () => {
         muted = !muted;
         await mediaSession!.setMicrophoneEnabled(!muted);
         mic.textContent = muted ? 'Unmute microphone' : 'Mute microphone';
       });
+      media.append(mic);
+    } else {
+      const note = document.createElement('p');
+      note.className = 'muted-note';
+      note.textContent = 'Listening. Use chat to take part.';
+      media.append(note);
     }
+
+    mediaUnsubscribers.push(mediaSession.subscribe(renderParticipants));
+    mediaUnsubscribers.push(mediaSession.onChat(appendChatMessage));
+    setupChatForm();
+    app!.querySelector<HTMLElement>('#chat')!.hidden = false;
   } catch (error) {
-    target.innerHTML = `<p class="status">${escapeHtml(describeError(error))}</p>`;
+    count.textContent = '';
+    media.innerHTML = `<p class="status">${escapeHtml(describeError(error))}</p>`;
   }
+}
+
+function renderParticipants(state: MediaRoomState): void {
+  const list = app!.querySelector<HTMLUListElement>('#participants');
+  const count = app!.querySelector<HTMLElement>('#stage-count');
+  if (!list || !count) return;
+
+  count.textContent = `${state.participants.length} ${state.participants.length === 1 ? 'person' : 'people'} here`;
+  list.replaceChildren(...state.participants.map((participant) => {
+    const item = document.createElement('li');
+    item.className = `participant${participant.isSpeaking ? ' speaking' : ''}`;
+
+    const dot = document.createElement('span');
+    dot.className = 'speaking-dot';
+    dot.setAttribute('aria-hidden', 'true');
+
+    const name = document.createElement('span');
+    name.className = 'participant-name';
+    name.textContent = participant.name || shortDid(participant.identity);
+
+    const tag = document.createElement('span');
+    tag.className = 'participant-tag';
+    if (participant.isLocal) tag.textContent = 'you';
+    else if (!participant.canSpeak) tag.textContent = 'listener';
+    else if (participant.isSpeaking) tag.textContent = 'speaking';
+
+    item.append(dot, name, tag);
+    return item;
+  }));
+}
+
+function setupChatForm(): void {
+  const form = app!.querySelector<HTMLFormElement>('#chat-form');
+  const input = app!.querySelector<HTMLInputElement>('#chat-input');
+  if (!form || !input) return;
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const text = input.value.trim();
+    if (!text || !mediaSession) return;
+    input.value = '';
+    try {
+      await mediaSession.sendChat(text);
+    } catch (error) {
+      setStatus(describeError(error));
+    }
+  });
+}
+
+function appendChatMessage(message: ChatMessage): void {
+  const log = app!.querySelector<HTMLUListElement>('#chat-log');
+  if (!log) return;
+  const item = document.createElement('li');
+  item.className = `chat-message${message.isLocal ? ' mine' : ''}`;
+
+  const who = document.createElement('strong');
+  who.textContent = message.name || shortDid(message.from);
+
+  const body = document.createElement('span');
+  body.textContent = message.text;
+
+  item.append(who, body);
+  log.append(item);
+  log.scrollTop = log.scrollHeight;
+}
+
+function shortDid(did: string): string {
+  return did.length > 16 ? `${did.slice(0, 12)}…${did.slice(-4)}` : did;
 }
 
 async function handleLeave(): Promise<void> {
@@ -399,6 +529,7 @@ async function handleLeave(): Promise<void> {
   await leaveRoom();
   activeRoom = undefined;
   const stage = app!.querySelector<HTMLElement>('#stage')!;
+  stage.classList.remove('active');
   stage.innerHTML = `
     <div>
       <p class="eyebrow">Current session</p>
@@ -409,6 +540,8 @@ async function handleLeave(): Promise<void> {
 }
 
 async function leaveMedia(): Promise<void> {
+  for (const unsubscribe of mediaUnsubscribers) unsubscribe();
+  mediaUnsubscribers = [];
   if (mediaSession) {
     try {
       await mediaSession.leave();
@@ -416,6 +549,16 @@ async function leaveMedia(): Promise<void> {
       // Best effort; the media session may already be gone.
     }
     mediaSession = undefined;
+  }
+}
+
+async function handleShare(room: BeachwaveRoom): Promise<void> {
+  setStatus('Sharing to Bluesky…');
+  try {
+    await shareRoom(room);
+    setStatus('Shared to your Bluesky feed.');
+  } catch (error) {
+    setStatus(describeError(error));
   }
 }
 
