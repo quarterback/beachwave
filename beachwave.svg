@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Beachwave logo</title>
+  <desc id="desc">A blue wave curling around a rose sun with a berry accent.</desc>
+  <defs>
+    <linearGradient id="wave" x1="88" y1="368" x2="416" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#007dc3"/>
+      <stop offset="1" stop-color="#b7d5d4"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="311" y1="83" x2="421" y2="211" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f7c1bb"/>
+      <stop offset="1" stop-color="#dc136c"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#f8fbff"/>
+  <circle cx="358" cy="154" r="66" fill="url(#sun)"/>
+  <path fill="url(#wave)" d="M83 315c35-89 111-151 201-151 86 0 146 56 146 130 0 69-52 120-123 120-53 0-94-28-111-68 34 27 88 23 118-9 25-27 25-67 0-94-26-28-77-31-120-7-47 26-81 72-111 79Z"/>
+  <path fill="#007dc3" d="M73 366c52 26 111 39 178 39 79 0 145-22 188-61-20 73-88 125-175 125-82 0-153-42-191-103Z" opacity=".92"/>
+  <path fill="#37393a" d="M110 340c41 21 89 32 145 32 58 0 107-13 145-40-37 53-92 82-163 82-52 0-95-26-127-74Z" opacity=".18"/>
+</svg>
