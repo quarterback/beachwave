@@ -1,0 +1,24 @@
+{
+  "lexicon": 1,
+  "id": "community.beachwave.room",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A live audio room announced by an ATProto repository and transported by LiveKit.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["title", "livekitRoom", "createdAt", "status"],
+        "properties": {
+          "title": { "type": "string", "maxLength": 120, "description": "Human-readable room title." },
+          "description": { "type": "string", "maxLength": 1000, "description": "Optional room summary or agenda." },
+          "livekitRoom": { "type": "string", "maxLength": 256, "description": "LiveKit room identifier used for media transport." },
+          "status": { "type": "string", "knownValues": ["live", "ended"], "description": "Current lifecycle state." },
+          "createdAt": { "type": "string", "format": "datetime" },
+          "endedAt": { "type": "string", "format": "datetime" },
+          "hosts": { "type": "array", "items": { "type": "string", "format": "did" }, "description": "DIDs allowed to administer the room." }
+        }
+      }
+    }
+  }
+}

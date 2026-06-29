@@ -1,12 +1,14 @@
 {
-  "name": "airwave",
+  "name": "beachwave",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Reference implementation for live audio on ATProto.",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "dev": "npm run build && python3 -m http.server 4173",
+    "preview": "npm run dev"
   },
   "dependencies": {},
   "devDependencies": {}

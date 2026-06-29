@@ -1,14 +1,14 @@
 import { assertRoomRecord, makeLiveKitRoomName } from './validation.js';
-import { ROOM_COLLECTION, type AirwaveRoom, type AirwaveRoomRecord, type CreateRoomInput, type JoinRoomResult, type RepositoryClient } from './types.js';
+import { ROOM_COLLECTION, type BeachwaveRoom, type BeachwaveRoomRecord, type CreateRoomInput, type JoinRoomResult, type RepositoryClient } from './types.js';
 
-function toRoom(uri: string, cid: string | undefined, value: unknown): AirwaveRoom {
+function toRoom(uri: string, cid: string | undefined, value: unknown): BeachwaveRoom {
   assertRoomRecord(value);
   const authorDid = uri.startsWith('at://') ? uri.slice(5).split('/')[0] : '';
   return { uri, cid, authorDid, record: value };
 }
 
-export async function createRoom(client: RepositoryClient, input: CreateRoomInput): Promise<AirwaveRoom> {
-  const record: AirwaveRoomRecord = {
+export async function createRoom(client: RepositoryClient, input: CreateRoomInput): Promise<BeachwaveRoom> {
+  const record: BeachwaveRoomRecord = {
     title: input.title.trim(),
     description: input.description?.trim() || undefined,
     livekitRoom: input.livekitRoom ?? makeLiveKitRoomName(client.did, input.title),
@@ -21,7 +21,7 @@ export async function createRoom(client: RepositoryClient, input: CreateRoomInpu
   return toRoom(created.uri, created.cid, record);
 }
 
-export async function endRoom(client: RepositoryClient, uri: string): Promise<AirwaveRoom> {
+export async function endRoom(client: RepositoryClient, uri: string): Promise<BeachwaveRoom> {
   const existing = await client.getRecord(uri);
   const record = { ...(existing.value as object), status: 'ended', endedAt: new Date().toISOString() };
   assertRoomRecord(record);
@@ -29,12 +29,12 @@ export async function endRoom(client: RepositoryClient, uri: string): Promise<Ai
   return toRoom(updated.uri, updated.cid, record);
 }
 
-export async function getRoom(client: RepositoryClient, uri: string): Promise<AirwaveRoom> {
+export async function getRoom(client: RepositoryClient, uri: string): Promise<BeachwaveRoom> {
   const found = await client.getRecord(uri);
   return toRoom(found.uri, found.cid, found.value);
 }
 
-export async function listRooms(client: RepositoryClient, repos: string[] = [client.did]): Promise<AirwaveRoom[]> {
+export async function listRooms(client: RepositoryClient, repos: string[] = [client.did]): Promise<BeachwaveRoom[]> {
   const records = await Promise.all(repos.map((repo) => client.listRecords(ROOM_COLLECTION, repo)));
   return records.flat().map((item) => toRoom(item.uri, item.cid, item.value)).filter((room) => room.record.status === 'live');
 }

@@ -1,11 +1,11 @@
-# Airwave Protocol
+# Beachwave Protocol
 
-Airwave uses ATProto repositories as the source of identity and room metadata. Media bytes are not stored in ATProto; live audio is transported by LiveKit or any compatible media layer that clients agree to join from the room metadata.
+Beachwave uses ATProto repositories as the source of identity and room metadata. Media bytes are not stored in ATProto; live audio is transported by LiveKit or any compatible media layer that clients agree to join from the room metadata.
 
 ## Room record
 
-* **Lexicon:** `community.airwave.room`
-* **Storage:** host user's ATProto repository collection `community.airwave.room`
+* **Lexicon:** `community.beachwave.room`
+* **Storage:** host user's ATProto repository collection `community.beachwave.room`
 * **Owner:** the DID that creates the record; additional host DIDs may be listed in `hosts`
 * **Purpose:** advertise a live audio room and provide the LiveKit room name needed to join media
 * **Lifecycle:** created with `status: "live"`, updated to `status: "ended"` with `endedAt` when closed

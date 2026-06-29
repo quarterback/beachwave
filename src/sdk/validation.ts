@@ -1,6 +1,6 @@
-import type { AirwaveRoomRecord } from './types.js';
+import type { BeachwaveRoomRecord } from './types.js';
 
-export function assertRoomRecord(value: unknown): asserts value is AirwaveRoomRecord {
+export function assertRoomRecord(value: unknown): asserts value is BeachwaveRoomRecord {
   if (!value || typeof value !== 'object') throw new Error('Room record must be an object');
   const record = value as Record<string, unknown>;
   if (typeof record.title !== 'string' || record.title.trim().length === 0) throw new Error('Room title is required');

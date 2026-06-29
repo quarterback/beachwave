@@ -1,8 +1,8 @@
-export const ROOM_COLLECTION = 'community.airwave.room' as const;
+export const ROOM_COLLECTION = 'community.beachwave.room' as const;
 
 export type RoomStatus = 'live' | 'ended';
 
-export interface AirwaveRoomRecord {
+export interface BeachwaveRoomRecord {
   title: string;
   description?: string;
   livekitRoom: string;
@@ -12,11 +12,11 @@ export interface AirwaveRoomRecord {
   hosts?: string[];
 }
 
-export interface AirwaveRoom {
+export interface BeachwaveRoom {
   uri: string;
   cid?: string;
   authorDid: string;
-  record: AirwaveRoomRecord;
+  record: BeachwaveRoomRecord;
 }
 
 export interface CreateRoomInput {
@@ -27,7 +27,7 @@ export interface CreateRoomInput {
 }
 
 export interface JoinRoomResult {
-  room: AirwaveRoom;
+  room: BeachwaveRoom;
   livekitRoom: string;
 }
 
