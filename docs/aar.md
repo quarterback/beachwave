@@ -224,3 +224,87 @@ link in the host's feed, joinable with the viewer's own ATProto identity.
   local-only and does not connect.
 * Speaker request/approval and moderation still await the
   Participant/Speaker/Invitation/Moderation lexicons.
+
+---
+
+# Milestone 4 — Interface, language, and a real design pass
+
+## Summary
+
+The stack worked end to end, but the project did not yet *read* as what it is:
+a forkable reference implementation. This milestone is a presentation and
+framing pass — clearer language, a polished multi-screen visual design, real
+typography, and two concrete sharing fixes — with no expansion of the protocol
+or feature set.
+
+## What was done
+
+### Reframing the language
+
+Rewrote the landing copy, README intro, and page metadata so Beachwave reads as
+a forkable reference implementation rather than a hosted consumer product: the
+demo is framed as proof of the stack, the repository as the reusable artifact.
+Added `title`/`description`, OpenGraph, and Twitter-card meta to `index.html`,
+and saved before/after screenshots under `docs/screenshots/` so the visual
+history travels with the repo.
+
+### Design implementation (Beachwave.dc.html)
+
+Implemented a Claude Design handoff (`Beachwave.dc.html`) across the screens
+that map to real functionality — landing + sign-in, dashboard (create room +
+your rooms), and the live room (speaker/listener avatar grids, mic + leave
+controls, LiveKit-backed chat rail). Adopted the design's deep-navy + ATProto
+blue + berry-pink palette and its live badges and equalizer/ring/pulse
+animations. The design's mock-only Discover, Profile, and Schedule screens were
+deliberately **not** built, because they have no data or backend behind them;
+building them would have meant non-functional fake-data pages.
+
+All existing behavior was preserved: the redesign is structure and styling only,
+keeping every form, handler, and element id intact.
+
+### Typography (Fontshare, self-served)
+
+Replaced the design's Google Fonts CDN reference with Fontshare faces served
+from its CSS API: **Cabinet Grotesk** for display/headings, **Alpino** for
+body/UI, and **Zodiak** (serif) for the large statement lines (hero accent and
+the dashboard greeting), giving a deliberate sans/serif contrast. No request is
+made to Google.
+
+### Branded Bluesky room cards
+
+Room announcements now attach an `app.bsky.embed.external` card (title +
+description) via a new optional `card` field on the announce SDK. When a room is
+shared, Bluesky renders a branded Beachwave card instead of unfurling the
+generic site landing page. The room lexicon stays provider-neutral; the embed is
+built only when the client supplies card metadata.
+
+### Shared-link deep join
+
+Following a shared room link now opens the live room directly: the pending
+shared room auto-joins after authentication instead of showing an invite card to
+click. Logged-out visitors who follow a link get a banner ("you followed a link
+to a live room — sign in to join it") and the sign-in form is scrolled into view.
+
+## Validation performed
+
+* `npm run build` and `npm test` pass (17 tests; added two `buildRoomPost`
+  cases — embed omitted without a card, and a branded `app.bsky.embed.external`
+  card when one is supplied).
+* Browser smoke test (Chromium) of the offline path across landing, dashboard,
+  create → join → live room, and the shared-link invite banner: zero page
+  errors, and computed `font-family` confirmed the Fontshare faces load.
+
+## Known limitations / next steps
+
+* Per-room link cards are branded **on Bluesky** via the post embed. A raw room
+  link pasted into a non-Bluesky unfurler still resolves the static site-level
+  OpenGraph tags, not the specific room. Branding those would need a small
+  serverless function (Vercel) that resolves the room record and emits per-room
+  OpenGraph tags; this was scoped out of this pass.
+* The external-embed card has no thumbnail: the `RepositoryClient` has no
+  `uploadBlob`, so a `thumb` blob is not attached. Adding blob upload would let
+  the Bluesky card carry the Beachwave image.
+* Discover, Profile, and Schedule from the design remain unbuilt by design; they
+  need real discovery, profile, and scheduling features (and lexicons) first.
+* In this environment the Fontshare/Google requests are subject to the network
+  policy; fonts fall back to the system stack when the CDN is unreachable.
