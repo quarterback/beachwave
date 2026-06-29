@@ -5,11 +5,11 @@ import { MemoryRepositoryClient } from '../dist/sdk/memory-client.js';
 
 test('creates, lists, joins, and ends a room', async () => {
   const client = new MemoryRepositoryClient('did:example:host');
-  const room = await createRoom(client, { title: 'Morning Dive', description: 'Daily ocean audio' });
+  const room = await createRoom(client, { title: 'Team Standup', description: 'Daily team audio' });
 
   assert.equal(room.record.status, 'live');
   assert.equal(room.record.hosts?.[0], 'did:example:host');
-  assert.match(room.record.livekitRoom, /morning-dive/);
+  assert.match(room.record.livekitRoom, /team-standup/);
 
   assert.equal((await listRooms(client)).length, 1);
   assert.equal((await joinRoom(client, room.uri)).livekitRoom, room.record.livekitRoom);

@@ -10,7 +10,9 @@
     "dev": "npm run build && python3 -m http.server 4173",
     "preview": "npm run dev"
   },
-  "dependencies": {},
+  "dependencies": {
+    "livekit-server-sdk": "^2.15.5"
+  },
   "devDependencies": {
     "typescript": "^5.5.4"
   }

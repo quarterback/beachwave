@@ -90,23 +90,72 @@ Both commands completed successfully at the time of the initial scaffold.
 4. Expand discovery beyond explicitly listed repositories.
 5. Draft Participant and Speaker lexicons once room lifecycle behavior is stable.
 
-## Branding Correction AAR — Beachwave Logo
+---
 
-### Context
+# Milestone 2 — ATProto OAuth and real PDS integration
 
-A previous implementation added a generated `beachwave.svg` asset and then incorrectly replaced it with a locally generated `beachwave-blue.png` placeholder. That still preserved the wrong artwork. The requested brand asset is the user-provided `beachwave-blue.png` from `quarterback/beachwave`, not a redrawn logo.
+## Summary
 
-### What changed
+Authentication was the stated blocker. This milestone adds modern ATProto OAuth,
+a real PDS-backed repository adapter, and the media-transport boundary, then
+wires the reference client through the full sign-in → room flow.
 
-* Removed the generated local logo asset from this repo.
-* Updated the HTML favicon to load `https://raw.githubusercontent.com/quarterback/beachwave/main/beachwave-blue.png`.
-* Updated the in-app brand lockup image to load `https://raw.githubusercontent.com/quarterback/beachwave/main/beachwave-blue.png`.
-* Updated README and deployment documentation so future deploys reference the canonical externally supplied logo instead of a generated local asset.
+## What was done
 
-### Notes for future agents
+### ATProto OAuth (from scratch, no dependencies)
 
-* Do not redraw, reinterpret, recolor, or replace user-provided brand assets unless the user explicitly requests that work.
-* Treat `https://raw.githubusercontent.com/quarterback/beachwave/main/beachwave-blue.png` as the canonical Beachwave logo source for the current web demo.
-* If a local copy of the logo is needed later, fetch the exact supplied binary asset; do not approximate it.
-* If another logo variant is provided later, preserve the original file and add the new variant under an explicit filename instead of overwriting existing brand artwork.
-* When changing static asset paths, verify both the favicon and visible in-app logo references.
+Added `src/sdk/atproto/`, a browser-native implementation of the public-client
+authorization-code flow using only Web Platform crypto:
+
+* `encoding.ts`, `jwk.ts`, `pkce.ts` — base64url/SHA-256 helpers, RFC 7638 JWK
+  thumbprints, and PKCE.
+* `dpop.ts`, `transport.ts` — non-extractable P-256 DPoP keys, signed proof
+  JWTs, and a DPoP-aware fetch that handles the `use_dpop_nonce` challenge.
+* `identity.ts`, `metadata.ts` — handle/DID → PDS resolution and
+  authorization-server discovery.
+* `oauth-client.ts`, `oauth-session.ts`, `store.ts` — PAR + token exchange, an
+  authenticated session with token refresh, and persistence (IndexedDB for the
+  key, localStorage for state).
+
+The client is scope-agnostic and defaults to `atproto transition:generic`, so
+granular scopes can be adopted by changing one configuration string.
+
+### Real repository adapter and dev fallback
+
+* `repository.ts` implements `RepositoryClient` against `com.atproto.repo.*`:
+  authenticated DPoP writes to the owner's PDS, and public reads against any
+  repository (resolving each DID's PDS).
+* `app-password.ts` provides an optional, clearly-scoped development fallback.
+
+### Media boundary
+
+`src/sdk/media/` defines `MediaController`/`MediaTokenProvider`/`MediaSession`
+and a LiveKit adapter. Token minting is delegated to a deployer-operated
+endpoint because it requires a server-side secret. Media transport stays fully
+decoupled from room metadata.
+
+### Reference client
+
+Rewrote `src/client/` for OAuth sign-in (primary), app-password and offline
+fallbacks (dev), redirect-callback handling, and the signed-in room flow
+(create, discover, share link, join, end) against the real PDS. Added
+`client-metadata.json` and loopback dev configuration.
+
+## Validation performed
+
+* `npm run build` and `npm test` pass (added `test/oauth.test.js`, including a
+  real ES256 DPoP sign/verify round-trip and PKCE/JWK/AT-URI/identity coverage).
+* Browser smoke test (Chromium): sign-in renders, offline create/join/end/sign-out
+  work with zero console errors.
+* The OAuth pre-redirect pipeline was driven against live Bluesky infrastructure:
+  handle resolution, auth-server discovery, DPoP, and a PAR that exercised the
+  `use_dpop_nonce` retry and returned a real `request_uri`.
+
+## Known limitations / next steps
+
+* The token-exchange callback and authenticated writes require a real interactive
+  login to validate end to end; they reuse the DPoP transport already exercised
+  by PAR.
+* In-app audio requires a LiveKit token service (documented in `deployment.md`).
+* Speaker request/approval and moderation remain future milestones pending the
+  Participant/Speaker/Invitation/Moderation lexicons.
