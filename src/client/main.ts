@@ -11,12 +11,17 @@ let activeRoom: BeachwaveRoom | undefined;
 app.innerHTML = `
   <main class="shell">
     <section class="hero">
-      <div class="card">
+      <div class="card hero-card">
+        <div class="brand-lockup" aria-label="Beachwave">
+          <img src="beachwave.svg" alt="" />
+          <span>Beachwave</span>
+        </div>
         <p class="eyebrow">ATProto live audio proof of concept</p>
         <h1 data-brand>Beachwave</h1>
         <p>
-          Create a live audio room record, discover it locally, and walk through the host/listener
-          lifecycle before the real ATProto and LiveKit adapters are connected.
+          A sunny, ATProto-native proof of concept for creating beachside live audio rooms,
+          discovering them locally, and walking through the host/listener lifecycle before
+          the real ATProto and LiveKit adapters are connected.
         </p>
         <div class="actions">
           <button id="seed-room" type="button">Create demo room</button>
