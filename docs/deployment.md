@@ -77,21 +77,49 @@ The reference client authenticates with ATProto OAuth (see `docs/auth.md`).
   The client derives its `client_id` as `<origin>/client-metadata.json` and its
   redirect URI as `<origin>/`, so those must match the document's contents.
 
-## LiveKit media (optional)
+## LiveKit media
 
 Beachwave owns room lifecycle, identity, participant state, permissions, and
 metadata; LiveKit owns transport and audio. Minting LiveKit tokens requires an
-API secret and therefore a small server-side token endpoint — it cannot be done
-in the browser. To enable in-app audio, run a token service and point the client
-at it via a meta tag in `index.html`:
+API secret, which can never live in the browser, so a small server-side endpoint
+signs them.
+
+A ready-to-use Vercel serverless function is included at `api/token.js`. It
+receives `{ livekitRoom, identity, displayName, role }` from the client and
+returns `{ url, token }`. `index.html` already points the client at it via:
 
 ```html
-<meta name="beachwave:livekit-token-endpoint" content="https://your-token-service.example/token" />
+<meta name="beachwave:livekit-token-endpoint" content="/api/token" />
 ```
 
-The endpoint receives `{ livekitRoom, identity, displayName, role }` and must
-return `{ url, token }`. Without it, the client shows the media handoff target
-(the `livekitRoom` name) instead of connecting.
+### Enabling audio on Vercel
+
+1. Create a LiveKit project (e.g. [LiveKit Cloud](https://cloud.livekit.io)) and
+   copy its **API key**, **API secret**, and **URL** (`wss://<project>.livekit.cloud`).
+2. In **Vercel → your project → Settings → Environment Variables**, add:
+
+   | Name | Value |
+   | --- | --- |
+   | `LIVEKIT_API_KEY` | your LiveKit API key |
+   | `LIVEKIT_API_SECRET` | your LiveKit API secret |
+   | `LIVEKIT_URL` | `wss://<project>.livekit.cloud` |
+
+   These go in **Vercel**, not GitHub secrets — Vercel builds and runs the
+   function, so it needs them at runtime. (GitHub secrets only reach GitHub
+   Actions.)
+3. Redeploy. "Join audio" now connects microphones; hosts/speakers can publish
+   and everyone can listen.
+
+Until the env vars are set, the endpoint returns `503` and the client surfaces
+"LiveKit is not configured on the server".
+
+### Hardening before public use
+
+`api/token.js` currently trusts the caller's `identity` and `role`. That is fine
+for early dogfooding, but before a public launch the endpoint should verify the
+caller's ATProto session (confirm `identity` matches the authenticated DID) and
+derive `role` from the room's host list server-side rather than trusting the
+client. See the note at the top of `api/token.js`.
 
 ## Current limitations
 
