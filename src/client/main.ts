@@ -74,6 +74,7 @@ async function boot(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 function renderSignIn(message = ''): void {
+  const invited = Boolean(pendingSharedRoom());
   app!.innerHTML = `
     <div class="landing">
       <header class="lp-nav">
@@ -149,6 +150,7 @@ function renderSignIn(message = ''): void {
       </section>
 
       <section class="signin" id="signin">
+        ${invited ? '<div class="invite-banner">🎧 You followed a link to a live room — sign in with ATProto to join it.</div>' : ''}
         <div class="signin-card">
           <div class="signin-left panel-dark">
             <img class="signin-logo" src="beachwave.svg" alt="Beachwave" />
@@ -247,6 +249,11 @@ function renderSignIn(message = ''): void {
     account = startOfflineDemo();
     await renderApp();
   });
+
+  if (invited) {
+    app!.querySelector('#signin')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    app!.querySelector<HTMLInputElement>('#identifier')?.focus();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -350,9 +357,17 @@ async function handleCreate(event: SubmitEvent): Promise<void> {
 
 async function shareRoom(room: BeachwaveRoom): Promise<void> {
   const url = roomUrl(room);
+  const description = room.record.description?.trim()
+    || 'Live audio room on ATProto — tap to join the conversation.';
   await announceRoom(account!.client, {
     text: `${room.record.title} is live on Beachwave — join: ${url}`,
-    url
+    url,
+    // Carry a branded external-embed card so the post renders as a Beachwave
+    // room on Bluesky instead of unfurling the generic site landing page.
+    card: {
+      title: `🎙 ${room.record.title} · live on Beachwave`,
+      description
+    }
   });
 }
 
@@ -777,19 +792,17 @@ async function handleSignOut(): Promise<void> {
 async function renderPendingSharedRoom(): Promise<void> {
   const uri = pendingSharedRoom();
   const section = app!.querySelector<HTMLElement>('#invite')!;
-  if (!uri || rooms.some((room) => room.uri === uri)) {
-    section.hidden = true;
-    return;
-  }
+  section.hidden = true;
+  if (!uri) return;
+  // A shared link should land you in the room, not on the dashboard. Resolve the
+  // record the link points at and open the live room directly.
   try {
     const room = await getRoom(account!.client, uri);
     forgetSharedRoom();
-    section.hidden = false;
-    section.className = 'invite-card';
-    section.innerHTML = '<p class="eyebrow">You were invited</p>';
-    section.append(renderRoomCard(room, room.authorDid === account!.did));
-  } catch {
-    section.hidden = true;
+    await handleJoin(room);
+  } catch (error) {
+    forgetSharedRoom();
+    setStatus(`Couldn't open the shared room: ${describeError(error)}`);
   }
 }
 

@@ -57,3 +57,25 @@ test('announceRoom writes an app.bsky.feed.post record', async () => {
   assert.equal(stored.value.$type, POST_COLLECTION);
   assert.equal(facetedSpan(stored.value), 'https://rooms.example/r');
 });
+
+test('buildRoomPost omits the embed when no card is given', () => {
+  const record = buildRoomPost({ text: 'live now', url: 'https://rooms.example/r' });
+  assert.equal(record.embed, undefined);
+});
+
+test('buildRoomPost attaches a branded external-embed card', () => {
+  const url = 'https://rooms.example/?room=at://did:plc:abc/community.beachwave.room/1';
+  const record = buildRoomPost({
+    text: `Office Hours is live — join: ${url}`,
+    url,
+    card: { title: '🎙 Office Hours · live on Beachwave', description: 'Open conversation for the community.' }
+  });
+
+  assert.equal(record.embed['$type'], 'app.bsky.embed.external');
+  assert.equal(record.embed.external.uri, url);
+  assert.equal(record.embed.external.title, '🎙 Office Hours · live on Beachwave');
+  assert.equal(record.embed.external.description, 'Open conversation for the community.');
+  assert.equal('thumb' in record.embed.external, false);
+  // The link facet is still present alongside the embed.
+  assert.equal(record.facets[0].features[0].uri, url);
+});
