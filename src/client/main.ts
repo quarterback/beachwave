@@ -36,6 +36,7 @@ const mediaController: MediaController | undefined = mediaTokenEndpoint
   : undefined;
 
 const PENDING_ROOM_KEY = 'beachwave.pendingRoom';
+const GITHUB_REPO_URL = 'https://github.com/quarterback/beachwave';
 
 let account: Account | undefined;
 let rooms: BeachwaveRoom[] = [];
@@ -74,24 +75,36 @@ async function boot(): Promise<void> {
 
 function renderSignIn(message = ''): void {
   app!.innerHTML = `
-    <main class="shell">
+    <main class="shell landing">
       <section class="hero">
         <div class="card hero-card">
           <div class="brand-lockup" aria-label="Beachwave">
             <img src="beachwave.svg" alt="" />
             <span>Beachwave</span>
           </div>
-          <p class="eyebrow">Live audio on ATProto</p>
-          <h1 data-brand>Beachwave</h1>
+          <p class="eyebrow">Reference implementation · ATProto</p>
+          <h1 data-brand>Forkable live audio for ATProto.</h1>
           <p>
-            Sign in with your ATProto account to create live audio rooms, share a
-            link, and hand off to LiveKit for the conversation. Identity and room
-            metadata stay in your repository.
+            Beachwave is a reference implementation for live audio rooms using
+            ATProto identity, ATProto room records, and LiveKit audio transport.
+          </p>
+          <div class="actions cta-row">
+            <a class="button" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">View the GitHub repo</a>
+            <a class="button secondary" href="#try-demo">Open the live demo</a>
+          </div>
+          <p class="muted-note">
+            The demo shows the stack working. The repo is meant to be forked,
+            deployed, and adapted.
           </p>
         </div>
-        <aside class="card stage">
+        <aside class="card stage" id="try-demo">
           <div>
-            <p class="eyebrow">Sign in</p>
+            <p class="eyebrow">Open the live demo</p>
+            <h2>Sign in to try it</h2>
+            <p class="muted-note">
+              Authenticate with your ATProto account to create a room, share a
+              link, and connect audio. The demo runs the same SDK the repo ships.
+            </p>
             <form id="oauth-form" class="form-grid">
               <label>
                 ATProto handle or DID
@@ -104,6 +117,56 @@ function renderSignIn(message = ''): void {
             <p class="status" id="status" role="status">${escapeHtml(message)}</p>
           </div>
         </aside>
+      </section>
+
+      <section class="card info">
+        <p class="eyebrow">What Beachwave does</p>
+        <h2>A working starting point for live audio on ATProto.</h2>
+        <p>
+          Beachwave gives developers a deployable loop they can inspect, fork,
+          and adapt. The hosted demo is proof the stack works end to end; the
+          repository is the reusable artifact. It includes:
+        </p>
+        <ul class="stack-list">
+          <li>Bluesky / ATProto OAuth login</li>
+          <li>ATProto room records</li>
+          <li>a <code>community.beachwave.room</code> lexicon</li>
+          <li>TypeScript SDK methods for room operations</li>
+          <li>LiveKit media integration</li>
+          <li>a browser reference client</li>
+          <li>Vercel / Netlify deployment support</li>
+        </ul>
+      </section>
+
+      <section class="info-grid">
+        <div class="card info">
+          <p class="eyebrow">How it works</p>
+          <h2>Identity, metadata, and media stay separate.</h2>
+          <ul class="plain-list">
+            <li>ATProto provides identity.</li>
+            <li>ATProto records store room metadata.</li>
+            <li>LiveKit carries the audio.</li>
+            <li>The SDK keeps repository operations out of the UI.</li>
+          </ul>
+          <p class="muted-note">
+            This separation is the central design point. The audio transport can
+            change later; the room record and client pattern are the reusable
+            pieces.
+          </p>
+        </div>
+        <div class="card info">
+          <p class="eyebrow">Fork &amp; deploy</p>
+          <h2>Run your own version.</h2>
+          <p class="muted-note">
+            Clone the repo, point <code>client-metadata.json</code> at your
+            domain, and deploy the static client to Vercel or Netlify. Use it as
+            a reference implementation, a starter app, a protocol experiment, or
+            a base for other ATProto live-session tools.
+          </p>
+          <div class="actions cta-row">
+            <a class="button" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">Fork on GitHub</a>
+          </div>
+        </div>
       </section>
 
       <section class="card">
@@ -129,6 +192,11 @@ function renderSignIn(message = ''): void {
           </form>
         </details>
       </section>
+
+      <footer class="landing-footer">
+        <span>Beachwave · forkable live audio reference app for ATProto</span>
+        <a href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">github.com/quarterback/beachwave</a>
+      </footer>
     </main>
   `;
 
@@ -191,6 +259,7 @@ async function renderApp(): Promise<void> {
             <strong id="identity-label"></strong>
             <span class="muted-note" id="identity-pds"></span>
           </div>
+          <a class="button secondary repo-link" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">GitHub repo</a>
           <button id="sign-out" type="button" class="secondary">Sign out</button>
         </div>
       </header>

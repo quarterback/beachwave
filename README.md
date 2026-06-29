@@ -1,8 +1,18 @@
 # Beachwave
 
-Beachwave is an open reference implementation for live audio on ATProto. It defines protocol primitives for decentralized live audio rooms and demonstrates them in a small browser client.
+Beachwave is a forkable reference implementation for live audio on ATProto. It demonstrates how to authenticate with ATProto OAuth, create room records in ATProto repositories, and connect participants through LiveKit audio transport.
 
-Identity comes from ATProto via OAuth, room metadata lives in ATProto records, and media transport is handled separately by LiveKit. The browser client consumes the SDK exactly as any third-party application would.
+The [hosted demo](https://beachwave-git-claude-beachwave-atp-0220aa-quarterbacks-projects.vercel.app/) shows the full loop working. The repository provides the reusable pieces: lexicon, SDK, media boundary, browser client, and deployment pattern.
+
+Identity comes from ATProto via OAuth, room metadata lives in ATProto records, and media transport is handled separately by LiveKit. The browser client consumes the SDK exactly as any third-party application would — so the demo is proof of the stack, and the repo is the thing you fork, deploy, and adapt.
+
+## What it demonstrates
+
+* fork — clone the repo and run your own instance
+* deploy — ship the static client to Vercel or Netlify
+* authenticate — sign in with Bluesky / ATProto OAuth
+* publish — write `community.beachwave.room` records to your repository
+* create / join / share / end — the full live-audio room loop over LiveKit
 
 ## Components
 
