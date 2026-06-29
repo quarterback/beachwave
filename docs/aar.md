@@ -89,3 +89,24 @@ Both commands completed successfully at the time of the initial scaffold.
 3. Add LiveKit token service documentation and client connection flow.
 4. Expand discovery beyond explicitly listed repositories.
 5. Draft Participant and Speaker lexicons once room lifecycle behavior is stable.
+
+## Branding Correction AAR — Beachwave Logo
+
+### Context
+
+A previous implementation added a generated `beachwave.svg` asset and then incorrectly replaced it with a locally generated `beachwave-blue.png` placeholder. That still preserved the wrong artwork. The requested brand asset is the user-provided `beachwave-blue.png` from `quarterback/beachwave`, not a redrawn logo.
+
+### What changed
+
+* Removed the generated local logo asset from this repo.
+* Updated the HTML favicon to load `https://raw.githubusercontent.com/quarterback/beachwave/main/beachwave-blue.png`.
+* Updated the in-app brand lockup image to load `https://raw.githubusercontent.com/quarterback/beachwave/main/beachwave-blue.png`.
+* Updated README and deployment documentation so future deploys reference the canonical externally supplied logo instead of a generated local asset.
+
+### Notes for future agents
+
+* Do not redraw, reinterpret, recolor, or replace user-provided brand assets unless the user explicitly requests that work.
+* Treat `https://raw.githubusercontent.com/quarterback/beachwave/main/beachwave-blue.png` as the canonical Beachwave logo source for the current web demo.
+* If a local copy of the logo is needed later, fetch the exact supplied binary asset; do not approximate it.
+* If another logo variant is provided later, preserve the original file and add the new variant under an explicit filename instead of overwriting existing brand artwork.
+* When changing static asset paths, verify both the favicon and visible in-app logo references.

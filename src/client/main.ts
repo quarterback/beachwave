@@ -13,7 +13,7 @@ app.innerHTML = `
     <section class="hero">
       <div class="card hero-card">
         <div class="brand-lockup" aria-label="Beachwave">
-          <img src="/beachwave.svg" alt="Beachwave logo" width="48" height="48" decoding="async" />
+          <img src="https://raw.githubusercontent.com/quarterback/beachwave/main/beachwave-blue.png" alt="Beachwave logo" width="48" height="48" decoding="async" />
           <span>Beachwave</span>
         </div>
         <p class="eyebrow">ATProto live audio proof of concept</p>

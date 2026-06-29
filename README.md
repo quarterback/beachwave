@@ -18,7 +18,7 @@ npm test
 npm run dev
 ```
 
-The current browser demo uses the Beachwave palette (`#007dc3`, `#b7d5d4`, `#37393a`, `#f7c1bb`, `#dc136c`) and the local `beachwave.svg` icon. Run `npm run dev` and open `http://localhost:4173` after building.
+The current browser demo uses the Beachwave palette (`#007dc3`, `#b7d5d4`, `#37393a`, `#f7c1bb`, `#dc136c`) and the canonical `beachwave-blue.png` logo from `quarterback/beachwave`. Run `npm run dev` and open `http://localhost:4173` after building.
 
 ## Deployment
 
