@@ -10,6 +10,16 @@ import { utf8ToBytes } from './atproto/encoding.js';
 
 export const POST_COLLECTION = 'app.bsky.feed.post';
 
+/** External-embed card metadata. Renders a branded link card on Bluesky. */
+export interface RoomCard {
+  /** Card title — e.g. the room title, branded with the app name. */
+  title: string;
+  /** Card description — e.g. the room agenda. */
+  description: string;
+  /** Optional blob ref for the card thumbnail (uploaded separately). */
+  thumb?: unknown;
+}
+
 export interface RoomAnnouncement {
   /** Post body. If it contains `url`, that span is linked; otherwise `url` is appended. */
   text: string;
@@ -17,17 +27,23 @@ export interface RoomAnnouncement {
   url: string;
   /** Override the post timestamp (ISO 8601). Defaults to now. */
   createdAt?: string;
+  /**
+   * Optional external-embed card. When present, the post carries an
+   * `app.bsky.embed.external` so Bluesky renders a branded card for the room
+   * instead of falling back to whatever OpenGraph tags the link resolves to.
+   */
+  card?: RoomCard;
 }
 
 /** Build an `app.bsky.feed.post` record that links to a room. */
 export function buildRoomPost(announcement: RoomAnnouncement): Record<string, unknown> {
-  const { text, url } = announcement;
+  const { text, url, card } = announcement;
   const fullText = text.includes(url) ? text : text.trim() ? `${text} ${url}` : url;
 
   const byteStart = utf8ByteLength(fullText.slice(0, fullText.indexOf(url)));
   const byteEnd = byteStart + utf8ByteLength(url);
 
-  return {
+  const record: Record<string, unknown> = {
     $type: POST_COLLECTION,
     text: fullText,
     facets: [
@@ -38,6 +54,20 @@ export function buildRoomPost(announcement: RoomAnnouncement): Record<string, un
     ],
     createdAt: announcement.createdAt ?? new Date().toISOString()
   };
+
+  if (card) {
+    record.embed = {
+      $type: 'app.bsky.embed.external',
+      external: {
+        uri: url,
+        title: card.title,
+        description: card.description,
+        ...(card.thumb ? { thumb: card.thumb } : {})
+      }
+    };
+  }
+
+  return record;
 }
 
 /** Publish a room announcement post and return its AT URI. */
