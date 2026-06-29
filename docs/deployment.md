@@ -60,22 +60,23 @@ The reference client authenticates with ATProto OAuth (see `docs/auth.md`).
 
 * **Local development** works with no extra setup: on `localhost`/`127.0.0.1`
   the client uses ATProto's loopback OAuth client. Run `npm run dev` and sign in.
-* **Production** requires a client metadata document served at your origin.
-  `client-metadata.json` is included at the repository root and is published as a
-  static file. Before going live, edit it so every URL matches your deployed
-  origin, for example:
+* **Production** requires a client metadata document served at your origin, and
+  every URL inside it must match that origin (a mismatch causes
+  `invalid_client_metadata` at sign-in). To avoid hand-editing, the build
+  regenerates `client-metadata.json` from the deployed URL via
+  `scripts/gen-client-metadata.mjs`:
 
-  ```json
-  {
-    "client_id": "https://rooms.example.com/client-metadata.json",
-    "client_uri": "https://rooms.example.com",
-    "logo_uri": "https://rooms.example.com/beachwave.svg",
-    "redirect_uris": ["https://rooms.example.com/"]
-  }
-  ```
+  * On Vercel it uses `VERCEL_PROJECT_PRODUCTION_URL` automatically — nothing to
+    configure if you sign in on the default `*.vercel.app` production domain.
+  * For a **custom domain**, set `BEACHWAVE_PUBLIC_URL` (e.g.
+    `https://rooms.example.com`) in the Vercel environment variables; it takes
+    precedence.
+  * With neither set (local builds), the committed file is left unchanged.
 
-  The client derives its `client_id` as `<origin>/client-metadata.json` and its
-  redirect URI as `<origin>/`, so those must match the document's contents.
+  Two caveats: sign in on the **production** deployment, not a preview URL (the
+  metadata always carries the production origin), and make sure the deployment is
+  **publicly reachable** — if Vercel deployment protection is on, the
+  authorization server can't fetch `client-metadata.json`.
 
 ## LiveKit media
 
