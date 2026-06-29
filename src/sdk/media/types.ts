@@ -2,9 +2,10 @@
 //
 // Beachwave owns room lifecycle, identity, participant state, permissions, and
 // metadata. The media layer (LiveKit) owns transport, audio routing, speaking,
-// the microphone, and WebRTC. These interfaces are the only contract between
-// the two, so the protocol never leaks media-provider details and the media
-// provider never needs to understand ATProto.
+// the microphone, WebRTC, and the ephemeral in-room data channel. These
+// interfaces are the only contract between the two, so the protocol never leaks
+// media-provider details and the media provider never needs to understand
+// ATProto.
 
 export type ParticipantRole = 'host' | 'speaker' | 'listener';
 
@@ -33,9 +34,50 @@ export interface MediaTokenProvider {
   getGrant(request: MediaJoinRequest): Promise<MediaGrant>;
 }
 
+/** A participant currently connected to a media room. */
+export interface MediaParticipant {
+  /** ATProto DID. */
+  identity: string;
+  /** Display name, when the participant published one. */
+  name?: string;
+  /** True for the local participant. */
+  isLocal: boolean;
+  /** True while the participant is actively speaking. */
+  isSpeaking: boolean;
+  /** True when the participant is permitted to publish audio. */
+  canSpeak: boolean;
+}
+
+/** A snapshot of who is in the room. */
+export interface MediaRoomState {
+  connected: boolean;
+  participants: MediaParticipant[];
+}
+
+/** An ephemeral in-room text message (not persisted to ATProto). */
+export interface ChatMessage {
+  /** Sender DID. */
+  from: string;
+  /** Sender display name, when known. */
+  name?: string;
+  text: string;
+  /** Epoch milliseconds. */
+  at: number;
+  /** True when this client sent the message. */
+  isLocal: boolean;
+}
+
 /** An active media connection. */
 export interface MediaSession {
   setMicrophoneEnabled(enabled: boolean): Promise<void>;
+  /** Send an ephemeral text message to everyone in the room. */
+  sendChat(text: string): Promise<void>;
+  /** Current presence snapshot. */
+  getState(): MediaRoomState;
+  /** Subscribe to presence/speaking changes. Fires immediately with current state. Returns an unsubscribe function. */
+  subscribe(listener: (state: MediaRoomState) => void): () => void;
+  /** Subscribe to incoming and locally-sent chat messages. Returns an unsubscribe function. */
+  onChat(listener: (message: ChatMessage) => void): () => void;
   leave(): Promise<void>;
 }
 

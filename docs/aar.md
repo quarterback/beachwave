@@ -159,3 +159,68 @@ fallbacks (dev), redirect-callback handling, and the signed-in room flow
 * In-app audio requires a LiveKit token service (documented in `deployment.md`).
 * Speaker request/approval and moderation remain future milestones pending the
   Participant/Speaker/Invitation/Moderation lexicons.
+
+---
+
+# Milestone 3 — Working rooms: audio, presence, chat, and Bluesky sharing
+
+## Summary
+
+After the first interactive sign-in (via the app-password fallback) it became
+clear the room "worked" but didn't *feel* like one: no audio was actually
+audible, and there was no sense of who was present. This milestone makes the
+room real and chooses the product direction — live rooms shared into the Bluesky
+feed.
+
+## What was done
+
+### Real audio
+
+The LiveKit adapter previously connected and published the local microphone but
+never attached *remote* audio tracks, so participants could not hear each other.
+The adapter now attaches subscribed audio tracks to hidden `<audio>` elements
+(and detaches them on unsubscribe), so audio actually flows.
+
+### Presence and speaking indicators
+
+The media boundary (`src/sdk/media/types.ts`) gained `MediaRoomState` /
+`MediaParticipant` and a `subscribe()` stream. The LiveKit adapter emits presence
+on connect/disconnect and active-speaker changes, and the room stage renders a
+live participant list with speaking highlights and a head count — which is also
+how a host validates that audio is working.
+
+### In-room text chat (accessibility)
+
+An ephemeral text chat rides the LiveKit data channel (`src/sdk/media/chat.ts`,
+`CHAT_TOPIC`), with a visible, `aria-live` chat feed in the room. It is a text
+alternative to audio and needs no new lexicon or persistence. Messages are not
+written to ATProto.
+
+### Share rooms to Bluesky
+
+`announceRoom()` / `buildRoomPost()` (`src/sdk/announce.ts`) publish an
+`app.bsky.feed.post` with a clickable join-link facet, through the same
+`RepositoryClient`. The room lexicon stays provider-neutral. The client offers a
+"Share to my Bluesky feed" checkbox on create and a per-room "Share to Bluesky"
+button. This is the chosen differentiator: going live surfaces a tap-to-join
+link in the host's feed, joinable with the viewer's own ATProto identity.
+
+## Validation performed
+
+* `npm run build` and `npm test` pass (15 tests; added chat codec round-trips and
+  `buildRoomPost` facet-offset coverage incl. unicode, plus an `announceRoom`
+  write against the in-memory client).
+* Browser smoke test (Chromium) of the offline path: zero console errors.
+* The LiveKit presence/chat/audio-attach paths follow the documented
+  livekit-client v2 API and type-check, but a two-participant test on the
+  deployed site is still needed to confirm them end to end (it needs a real
+  LiveKit server and a second participant).
+
+## Known limitations / next steps
+
+* `api/token.js` still trusts the caller's identity/role; harden before public
+  launch (verify the ATProto session; derive role server-side).
+* Chat and presence require LiveKit to be configured; the offline demo is
+  local-only and does not connect.
+* Speaker request/approval and moderation still await the
+  Participant/Speaker/Invitation/Moderation lexicons.
