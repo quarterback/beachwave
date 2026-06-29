@@ -41,3 +41,14 @@ export function resolveMediaTokenEndpoint(): string | undefined {
   const value = meta?.content?.trim();
   return value || undefined;
 }
+
+/**
+ * Endpoint that grants a participant publish permission when a host approves a
+ * request to speak. Defaults to the bundled `/api/grant-speak` function, and can
+ * be overridden with `<meta name="beachwave:livekit-grant-endpoint" content="...">`.
+ */
+export function resolveSpeakGrantEndpoint(): string {
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="beachwave:livekit-grant-endpoint"]');
+  const value = meta?.content?.trim();
+  return value || '/api/grant-speak';
+}

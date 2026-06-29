@@ -79,3 +79,52 @@ test('buildRoomPost attaches a branded external-embed card', () => {
   // The link facet is still present alongside the embed.
   assert.equal(record.facets[0].features[0].uri, url);
 });
+
+import { encodeControl, decodeControl } from '../dist/sdk/media/control.js';
+import grantSpeak from '../api/grant-speak.js';
+
+test('control messages round-trip through the control channel format', () => {
+  assert.deepEqual(decodeControl(encodeControl({ t: 'speak-request', name: 'alice' })), { t: 'speak-request', name: 'alice' });
+  assert.deepEqual(decodeControl(encodeControl({ t: 'speak-request' })), { t: 'speak-request', name: undefined });
+  assert.deepEqual(
+    decodeControl(encodeControl({ t: 'speak-decision', target: 'did:plc:abc', approved: true })),
+    { t: 'speak-decision', target: 'did:plc:abc', approved: true }
+  );
+});
+
+test('decodeControl rejects malformed and unknown control payloads', () => {
+  assert.equal(decodeControl(new TextEncoder().encode('nope')), null);
+  assert.equal(decodeControl(new TextEncoder().encode(JSON.stringify({ t: 'speak-decision', target: 'x' }))), null);
+  assert.equal(decodeControl(new TextEncoder().encode(JSON.stringify({ t: 'other' }))), null);
+});
+
+function mockRes() {
+  const r = { headers: {} };
+  r.setHeader = (k, v) => { r.headers[k.toLowerCase()] = v; };
+  r.status = (c) => { r.code = c; return r; };
+  r.json = (b) => { r.body = b; return r; };
+  return r;
+}
+
+test('grant-speak validates input and configuration', async () => {
+  // Not configured -> 503
+  let res = mockRes();
+  await grantSpeak({ method: 'POST', body: { livekitRoom: 'r', identity: 'i' } }, res);
+  assert.equal(res.code, 503);
+
+  // Wrong method -> 405
+  res = mockRes();
+  await grantSpeak({ method: 'GET' }, res);
+  assert.equal(res.code, 405);
+
+  // Configured but missing fields -> 400
+  process.env.LIVEKIT_API_KEY = 'k';
+  process.env.LIVEKIT_API_SECRET = 'sssssssssssssssssssssssssssssss';
+  process.env.LIVEKIT_URL = 'wss://demo.livekit.cloud';
+  res = mockRes();
+  await grantSpeak({ method: 'POST', body: { identity: 'i' } }, res);
+  assert.equal(res.code, 400);
+  delete process.env.LIVEKIT_API_KEY;
+  delete process.env.LIVEKIT_API_SECRET;
+  delete process.env.LIVEKIT_URL;
+});

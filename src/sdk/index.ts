@@ -52,6 +52,7 @@ export async function leaveRoom(): Promise<void> {
 export * from './types.js';
 export * from './atproto/index.js';
 export * from './media/types.js';
-export { HttpMediaTokenProvider, LiveKitMediaController } from './media/livekit.js';
+export { HttpMediaTokenProvider, LiveKitMediaController, type LiveKitControllerOptions } from './media/livekit.js';
 export { CHAT_TOPIC, encodeChat, decodeChat } from './media/chat.js';
+export { CONTROL_TOPIC, encodeControl, decodeControl, type SpeakRequest, type SpeakDecision } from './media/control.js';
 export { announceRoom, buildRoomPost, POST_COLLECTION, type RoomAnnouncement } from './announce.js';

@@ -11,12 +11,12 @@ import {
   OAuthClient,
   type BeachwaveRoom,
   type ChatMessage,
-  type MediaController,
   type MediaRoomState,
   type MediaSession,
-  type ParticipantRole
+  type ParticipantRole,
+  type SpeakRequest
 } from '../sdk/index.js';
-import { resolveMediaTokenEndpoint, resolveOAuthConfig } from './config.js';
+import { resolveMediaTokenEndpoint, resolveOAuthConfig, resolveSpeakGrantEndpoint } from './config.js';
 import {
   completeOAuthCallback,
   restoreAccount,
@@ -31,8 +31,10 @@ if (!app) throw new Error('Missing #root element');
 
 const oauth = new OAuthClient(resolveOAuthConfig());
 const mediaTokenEndpoint = resolveMediaTokenEndpoint();
-const mediaController: MediaController | undefined = mediaTokenEndpoint
-  ? new LiveKitMediaController(new HttpMediaTokenProvider(mediaTokenEndpoint))
+const mediaController: LiveKitMediaController | undefined = mediaTokenEndpoint
+  ? new LiveKitMediaController(new HttpMediaTokenProvider(mediaTokenEndpoint), {
+      grantEndpoint: resolveSpeakGrantEndpoint()
+    })
   : undefined;
 
 const PENDING_ROOM_KEY = 'beachwave.pendingRoom';
@@ -43,6 +45,12 @@ let rooms: BeachwaveRoom[] = [];
 let activeRoom: BeachwaveRoom | undefined;
 let mediaSession: MediaSession | undefined;
 let mediaUnsubscribers: Array<() => void> = [];
+
+// Per-room speaker-moderation state, reset on each join/leave.
+let micOn = false;
+let speakRequested = false;
+let controlMode: 'speaker' | 'listener' | undefined;
+const pendingSpeakRequests = new Map<string, SpeakRequest>();
 
 void boot();
 
@@ -483,6 +491,10 @@ async function handleJoin(room: BeachwaveRoom): Promise<void> {
             </div>
             <button id="copy-room" type="button" class="btn-sm ghost">Copy link</button>
           </div>
+          <div class="room-section" id="requests-section" hidden>
+            <div class="room-section-label">REQUESTS TO SPEAK</div>
+            <div id="requests" class="request-list"></div>
+          </div>
           <div class="room-section">
             <div class="room-section-label" id="speakers-label">SPEAKERS</div>
             <div id="speakers" class="speaker-grid"></div>
@@ -524,7 +536,6 @@ async function handleJoin(room: BeachwaveRoom): Promise<void> {
 async function connectMedia(livekitRoom: string, role: ParticipantRole): Promise<void> {
   const media = app!.querySelector<HTMLElement>('#stage-media')!;
   const count = app!.querySelector<HTMLElement>('#stage-count')!;
-  const canPublish = role === 'host' || role === 'speaker';
   // The offline demo is local-only; it never connects to a real media server.
   const controller = account!.kind === 'offline' ? undefined : mediaController;
 
@@ -548,37 +559,17 @@ async function connectMedia(livekitRoom: string, role: ParticipantRole): Promise
       role
     });
 
-    media.innerHTML = '';
-    if (canPublish) {
-      const mic = document.createElement('button');
-      mic.type = 'button';
-      mic.className = 'btn-mic';
-      mic.textContent = '🎙 Enable mic';
-      let micOn = false;
-      const applyMic = async (want: boolean): Promise<void> => {
-        try {
-          await mediaSession!.setMicrophoneEnabled(want);
-          micOn = want;
-          mic.textContent = micOn ? '🔇 Mute mic' : '🎙 Unmute mic';
-        } catch (error) {
-          // On mobile the auto-attempt can be rejected; the next tap is a gesture.
-          micOn = false;
-          mic.textContent = '🎙 Enable mic';
-          setStatus(describeError(error));
-        }
-      };
-      mic.addEventListener('click', () => void applyMic(!micOn));
-      media.append(mic);
-      void applyMic(true);
-    } else {
-      const note = document.createElement('p');
-      note.className = 'muted-note';
-      note.textContent = 'Listening. Use chat to take part.';
-      media.append(note);
-    }
+    // Reset per-room moderation state for this fresh session.
+    controlMode = undefined;
+    micOn = false;
+    speakRequested = false;
+    pendingSpeakRequests.clear();
 
+    media.innerHTML = '';
     mediaUnsubscribers.push(mediaSession.subscribe(onRoomState));
     mediaUnsubscribers.push(mediaSession.onChat(appendChatMessage));
+    mediaUnsubscribers.push(mediaSession.onSpeakRequest(handleSpeakRequest));
+    mediaUnsubscribers.push(mediaSession.onSpeakDecision(handleSpeakDecision));
     setupChatForm();
     app!.querySelector<HTMLElement>('#chat')!.hidden = false;
   } catch (error) {
@@ -590,6 +581,137 @@ async function connectMedia(livekitRoom: string, role: ParticipantRole): Promise
 function onRoomState(state: MediaRoomState): void {
   renderParticipants(state);
   updateAudioUnlock(state);
+  renderControls(state);
+}
+
+/**
+ * Render the bottom-row controls from current state. Idempotent by "mode" so the
+ * frequent speaking-state updates don't rebuild the buttons — only a change in
+ * publish permission (speaker ⇄ listener) swaps the controls.
+ */
+function renderControls(state: MediaRoomState): void {
+  const media = app!.querySelector<HTMLElement>('#stage-media');
+  if (!media) return;
+  const local = state.participants.find((participant) => participant.isLocal);
+  const mode: 'speaker' | 'listener' = local?.canSpeak ? 'speaker' : 'listener';
+  if (mode === controlMode) return;
+  controlMode = mode;
+  media.replaceChildren(mode === 'speaker' ? buildMicControl() : buildRequestControl());
+}
+
+function buildMicControl(): HTMLElement {
+  const mic = document.createElement('button');
+  mic.type = 'button';
+  mic.className = 'btn-mic';
+  mic.textContent = micOn ? '🔇 Mute mic' : '🎙 Enable mic';
+  const applyMic = async (want: boolean): Promise<void> => {
+    try {
+      await mediaSession!.setMicrophoneEnabled(want);
+      micOn = want;
+      mic.textContent = micOn ? '🔇 Mute mic' : '🎙 Unmute mic';
+    } catch (error) {
+      // On mobile the auto-attempt can be rejected; the next tap is a gesture.
+      micOn = false;
+      mic.textContent = '🎙 Enable mic';
+      setStatus(describeError(error));
+    }
+  };
+  mic.addEventListener('click', () => void applyMic(!micOn));
+  // Auto-enable on desktop; mobile falls back to a tap on the button.
+  if (!micOn) void applyMic(true);
+  return mic;
+}
+
+function buildRequestControl(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'request-control';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'btn-mic ghost';
+  const sync = (): void => {
+    button.textContent = speakRequested ? '✋ Requested — waiting for host' : '✋ Request to speak';
+    button.disabled = speakRequested;
+  };
+  button.addEventListener('click', async () => {
+    if (speakRequested || !mediaSession) return;
+    speakRequested = true;
+    sync();
+    try {
+      await mediaSession.requestToSpeak();
+      setStatus('Asked the host to speak.');
+    } catch (error) {
+      speakRequested = false;
+      sync();
+      setStatus(describeError(error));
+    }
+  });
+  sync();
+  wrap.append(button);
+  return wrap;
+}
+
+/** Host side: a listener asked to speak. */
+function handleSpeakRequest(request: SpeakRequest): void {
+  if (!activeRoom || !canAdminister(activeRoom)) return;
+  if (request.identity === account!.did) return;
+  pendingSpeakRequests.set(request.identity, request);
+  renderRequests();
+}
+
+/** Requester side: the host responded. */
+function handleSpeakDecision(decision: { target: string; approved: boolean }): void {
+  if (decision.target !== account!.did) return;
+  if (decision.approved) {
+    setStatus('You were approved to speak.');
+  } else {
+    speakRequested = false;
+    setStatus('Your request to speak was declined.');
+    if (mediaSession) renderControls(mediaSession.getState());
+  }
+}
+
+function renderRequests(): void {
+  const section = app!.querySelector<HTMLElement>('#requests-section');
+  const list = app!.querySelector<HTMLElement>('#requests');
+  if (!section || !list) return;
+  section.hidden = pendingSpeakRequests.size === 0;
+  list.replaceChildren(...Array.from(pendingSpeakRequests.values()).map((request) => {
+    const row = document.createElement('div');
+    row.className = 'request-row';
+
+    const name = document.createElement('span');
+    name.className = 'request-name';
+    name.textContent = request.name || shortDid(request.identity);
+
+    const approve = document.createElement('button');
+    approve.type = 'button';
+    approve.className = 'btn-sm';
+    approve.textContent = 'Approve';
+    approve.addEventListener('click', () => void decideRequest(request, true));
+
+    const deny = document.createElement('button');
+    deny.type = 'button';
+    deny.className = 'btn-sm ghost';
+    deny.textContent = 'Deny';
+    deny.addEventListener('click', () => void decideRequest(request, false));
+
+    row.append(name, approve, deny);
+    return row;
+  }));
+}
+
+async function decideRequest(request: SpeakRequest, approved: boolean): Promise<void> {
+  pendingSpeakRequests.delete(request.identity);
+  renderRequests();
+  try {
+    if (approved) {
+      await mediaController!.grantSpeaker({ livekitRoom: activeRoom!.record.livekitRoom, identity: request.identity });
+    }
+    await mediaSession!.decideSpeak(request.identity, approved);
+    setStatus(approved ? `Approved ${request.name || 'guest'} to speak.` : 'Request declined.');
+  } catch (error) {
+    setStatus(describeError(error));
+  }
 }
 
 /** Show a tap-to-enable-audio control when the browser blocks playback (mobile/iOS). */
@@ -631,7 +753,7 @@ function renderParticipants(state: MediaRoomState): void {
   if (speakersLabel) speakersLabel.textContent = `SPEAKERS · ${speakers.length}`;
   speakersEl.replaceChildren(...speakers.map((participant, index) => {
     const item = document.createElement('div');
-    item.className = 'speaker';
+    item.className = `speaker${participant.isSpeaking ? ' speaking' : ''}`;
 
     const avatar = document.createElement('div');
     avatar.className = `avatar av-${index % 4}${participant.isSpeaking ? ' ring' : ''}`;
@@ -643,7 +765,8 @@ function renderParticipants(state: MediaRoomState): void {
 
     const role = document.createElement('div');
     role.className = `speaker-role${participant.isSpeaking ? ' live' : ''}`;
-    role.textContent = participant.isLocal ? 'you' : participant.isSpeaking ? 'speaking' : 'speaker';
+    // Show "speaking" for anyone talking, including yourself — that's the live cue.
+    role.textContent = participant.isSpeaking ? 'speaking' : participant.isLocal ? 'you' : 'speaker';
 
     item.append(avatar, name, role);
     return item;
@@ -726,6 +849,10 @@ async function handleLeave(): Promise<void> {
   await leaveMedia();
   await leaveRoom();
   activeRoom = undefined;
+  controlMode = undefined;
+  micOn = false;
+  speakRequested = false;
+  pendingSpeakRequests.clear();
   const stage = app!.querySelector<HTMLElement>('#stage')!;
   stage.classList.remove('active');
   stage.innerHTML = '';

@@ -7,6 +7,9 @@
 // media-provider details and the media provider never needs to understand
 // ATProto.
 
+import type { SpeakDecision, SpeakRequest } from './control.js';
+export type { SpeakDecision, SpeakRequest } from './control.js';
+
 export type ParticipantRole = 'host' | 'speaker' | 'listener';
 
 export interface MediaJoinRequest {
@@ -77,6 +80,15 @@ export interface MediaSession {
   startAudio(): Promise<void>;
   /** Send an ephemeral text message to everyone in the room. */
   sendChat(text: string): Promise<void>;
+  /** Ask the host(s) for permission to speak (listener action). */
+  requestToSpeak(): Promise<void>;
+  /** Notify a requester of the host's decision (host action). The actual
+   *  permission grant is performed separately, server-side. */
+  decideSpeak(target: string, approved: boolean): Promise<void>;
+  /** Subscribe to incoming speak requests (host receives these). */
+  onSpeakRequest(listener: (request: SpeakRequest) => void): () => void;
+  /** Subscribe to host decisions (requester receives these). */
+  onSpeakDecision(listener: (decision: SpeakDecision) => void): () => void;
   /** Current presence snapshot. */
   getState(): MediaRoomState;
   /** Subscribe to presence/speaking changes. Fires immediately with current state. Returns an unsubscribe function. */
