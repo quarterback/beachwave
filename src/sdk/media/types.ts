@@ -52,6 +52,9 @@ export interface MediaParticipant {
 export interface MediaRoomState {
   connected: boolean;
   participants: MediaParticipant[];
+  /** True when the browser is blocking audio playback until a user gesture
+   *  (common on mobile/iOS). Resolve by calling `startAudio()` from a tap. */
+  audioBlocked: boolean;
 }
 
 /** An ephemeral in-room text message (not persisted to ATProto). */
@@ -70,6 +73,8 @@ export interface ChatMessage {
 /** An active media connection. */
 export interface MediaSession {
   setMicrophoneEnabled(enabled: boolean): Promise<void>;
+  /** Unlock audio playback after a user gesture (required on mobile/iOS). */
+  startAudio(): Promise<void>;
   /** Send an ephemeral text message to everyone in the room. */
   sendChat(text: string): Promise<void>;
   /** Current presence snapshot. */
