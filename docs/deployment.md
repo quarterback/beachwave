@@ -61,22 +61,21 @@ The reference client authenticates with ATProto OAuth (see `docs/auth.md`).
 * **Local development** works with no extra setup: on `localhost`/`127.0.0.1`
   the client uses ATProto's loopback OAuth client. Run `npm run dev` and sign in.
 * **Production** requires a client metadata document served at your origin, and
-  every URL inside it must match that origin (a mismatch causes
-  `invalid_client_metadata` at sign-in). To avoid hand-editing, the build
-  regenerates `client-metadata.json` from the deployed URL via
-  `scripts/gen-client-metadata.mjs`:
+  every URL inside it must match that origin exactly (a mismatch causes
+  `invalid_client_metadata` at sign-in). On Vercel this is automatic: the
+  function `api/client-metadata.js` derives the origin from the request's own
+  Host header and a `vercel.json` rewrite serves it at `/client-metadata.json`.
+  It works on every deployment — production, preview, and custom domains — with
+  nothing to configure.
 
-  * On Vercel it uses `VERCEL_PROJECT_PRODUCTION_URL` automatically — nothing to
-    configure if you sign in on the default `*.vercel.app` production domain.
-  * For a **custom domain**, set `BEACHWAVE_PUBLIC_URL` (e.g.
-    `https://rooms.example.com`) in the Vercel environment variables; it takes
-    precedence.
-  * With neither set (local builds), the committed file is left unchanged.
+  One requirement remains: the deployment must be **publicly reachable**. If
+  Vercel **Deployment Protection** (password/SSO) is enabled, the authorization
+  server can't fetch `/client-metadata.json` and sign-in fails. Turn protection
+  off for any deployment you want to sign in on.
 
-  Two caveats: sign in on the **production** deployment, not a preview URL (the
-  metadata always carries the production origin), and make sure the deployment is
-  **publicly reachable** — if Vercel deployment protection is on, the
-  authorization server can't fetch `client-metadata.json`.
+  On other static hosts (Netlify, GitHub Pages) there is no function, so serve a
+  `client-metadata.json` whose URLs match your origin — either a static file you
+  maintain or an equivalent host function.
 
 ## LiveKit media
 

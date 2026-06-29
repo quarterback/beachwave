@@ -67,7 +67,11 @@ export class LiveKitMediaController implements MediaController {
         isSpeaking: Boolean(p.isSpeaking),
         canSpeak: p === room.localParticipant ? canPublish : Boolean(p.permissions?.canPublish)
       }));
-      return { connected: String(room.state) === 'connected', participants };
+      return {
+        connected: String(room.state) === 'connected',
+        audioBlocked: room.canPlaybackAudio === false,
+        participants
+      };
     };
 
     const emitState = () => {
@@ -100,14 +104,16 @@ export class LiveKitMediaController implements MediaController {
       .on(RoomEvent.TrackMuted, emitState)
       .on(RoomEvent.TrackUnmuted, emitState)
       .on(RoomEvent.ConnectionStateChanged, emitState)
+      .on(RoomEvent.AudioPlaybackStatusChanged, emitState)
       .on(RoomEvent.Disconnected, emitState);
 
     function emitChat(message: ChatMessage): void {
       for (const listener of chatListeners) listener(message);
     }
 
+    // The microphone is enabled by the caller from a user gesture, not here:
+    // mobile browsers reject capture requested outside a direct interaction.
     await room.connect(grant.url, grant.token);
-    if (canPublish) await room.localParticipant.setMicrophoneEnabled(true);
     emitState();
 
     return {
@@ -120,6 +126,10 @@ export class LiveKitMediaController implements MediaController {
       onChat(listener) {
         chatListeners.add(listener);
         return () => chatListeners.delete(listener);
+      },
+      async startAudio() {
+        await room.startAudio();
+        emitState();
       },
       async setMicrophoneEnabled(enabled) {
         await room.localParticipant.setMicrophoneEnabled(enabled);
@@ -156,10 +166,12 @@ interface LiveKitModule {
 
 interface LiveKitRoom {
   state: string;
+  canPlaybackAudio: boolean;
   localParticipant: LiveKitLocalParticipant;
   remoteParticipants: Map<string, LiveKitParticipant>;
   on(event: string, handler: (...args: never[]) => void): LiveKitRoom;
   connect(url: string, token: string): Promise<void>;
+  startAudio(): Promise<void>;
   disconnect(): Promise<void>;
 }
 

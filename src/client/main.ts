@@ -380,6 +380,7 @@ async function handleJoin(room: BeachwaveRoom): Promise<void> {
         <h2 id="stage-title"></h2>
         <p class="muted-note">Role: <strong id="stage-role"></strong> · <span id="stage-count">connecting…</span></p>
         <ul id="participants" class="participants"></ul>
+        <div id="audio-unlock" class="audio-unlock" hidden></div>
         <div id="stage-media" class="actions"></div>
         <div id="chat" class="chat" hidden>
           <ul id="chat-log" class="chat-log" aria-live="polite" aria-label="Room chat"></ul>
@@ -432,14 +433,23 @@ async function connectMedia(livekitRoom: string, role: ParticipantRole): Promise
     if (canPublish) {
       const mic = document.createElement('button');
       mic.type = 'button';
-      mic.textContent = 'Mute microphone';
-      let muted = false;
-      mic.addEventListener('click', async () => {
-        muted = !muted;
-        await mediaSession!.setMicrophoneEnabled(!muted);
-        mic.textContent = muted ? 'Unmute microphone' : 'Mute microphone';
-      });
+      mic.textContent = 'Enable microphone';
+      let micOn = false;
+      const applyMic = async (want: boolean): Promise<void> => {
+        try {
+          await mediaSession!.setMicrophoneEnabled(want);
+          micOn = want;
+          mic.textContent = micOn ? 'Mute microphone' : 'Unmute microphone';
+        } catch (error) {
+          // On mobile the auto-attempt can be rejected; the next tap is a gesture.
+          micOn = false;
+          mic.textContent = 'Enable microphone';
+          setStatus(describeError(error));
+        }
+      };
+      mic.addEventListener('click', () => void applyMic(!micOn));
       media.append(mic);
+      void applyMic(true);
     } else {
       const note = document.createElement('p');
       note.className = 'muted-note';
@@ -447,13 +457,42 @@ async function connectMedia(livekitRoom: string, role: ParticipantRole): Promise
       media.append(note);
     }
 
-    mediaUnsubscribers.push(mediaSession.subscribe(renderParticipants));
+    mediaUnsubscribers.push(mediaSession.subscribe(onRoomState));
     mediaUnsubscribers.push(mediaSession.onChat(appendChatMessage));
     setupChatForm();
     app!.querySelector<HTMLElement>('#chat')!.hidden = false;
   } catch (error) {
     count.textContent = '';
     media.innerHTML = `<p class="status">${escapeHtml(describeError(error))}</p>`;
+  }
+}
+
+function onRoomState(state: MediaRoomState): void {
+  renderParticipants(state);
+  updateAudioUnlock(state);
+}
+
+/** Show a tap-to-enable-audio control when the browser blocks playback (mobile/iOS). */
+function updateAudioUnlock(state: MediaRoomState): void {
+  const banner = app!.querySelector<HTMLElement>('#audio-unlock');
+  if (!banner) return;
+  if (!state.audioBlocked) {
+    banner.hidden = true;
+    return;
+  }
+  banner.hidden = false;
+  if (banner.childElementCount === 0) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'Tap to enable audio';
+    button.addEventListener('click', async () => {
+      try {
+        await mediaSession?.startAudio();
+      } catch (error) {
+        setStatus(describeError(error));
+      }
+    });
+    banner.append(button);
   }
 }
 

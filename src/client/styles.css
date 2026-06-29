@@ -81,6 +81,8 @@ label.checkbox input { width: auto; }
 .participant-name { font-weight: 700; color: var(--gunmetal); }
 .participant-tag { margin-left: auto; font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 
+.audio-unlock { display: grid; }
+.audio-unlock button { background: var(--berry-lipstick); box-shadow: 0 10px 28px rgba(220, 19, 108, .22); }
 .chat { display: grid; gap: .5rem; }
 .chat-log { list-style: none; margin: 0; padding: .5rem; display: grid; gap: .4rem; max-height: 220px; overflow-y: auto; background: rgba(255,255,255,.55); border-radius: 1rem; }
 .chat-message { display: grid; gap: .1rem; font-size: .9rem; }
