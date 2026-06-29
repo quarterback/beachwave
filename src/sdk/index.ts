@@ -50,3 +50,6 @@ export async function leaveRoom(): Promise<void> {
 }
 
 export * from './types.js';
+export * from './atproto/index.js';
+export * from './media/types.js';
+export { HttpMediaTokenProvider, LiveKitMediaController } from './media/livekit.js';
