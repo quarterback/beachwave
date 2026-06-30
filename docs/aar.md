@@ -588,3 +588,36 @@ edge-cached, with a graceful fallback for unresolvable rooms.
   (room title) is a future enhancement.
 * The trust-the-caller posture on media/moderation endpoints still stands;
   server-side host-authority verification remains the pre-launch hardening.
+
+---
+
+# Milestone 10 — Room-level moderation
+
+## Summary
+
+Per-participant action buttons were crammed under avatars in the roster grid and
+overflowed their cells, and managing a busy room one person at a time did not
+scale. Moderation moves into a dedicated room-level panel with bulk controls.
+
+## What was done
+
+* A collapsible "Moderator tools" panel (admins only) replaces the inline roster
+  buttons. It lists every participant in a scrollable column with their actions,
+  so the speakers/listeners grid stays clean and nothing clips.
+* Bulk controls: **Mute all** moves every non-admin speaker to the audience in
+  one action; an **Open mic** toggle (owner only) sets the room's policy.
+* Added an `openMic` field to the room lexicon. `participantRole` reads it, so a
+  room can start open (everyone speaks) or moderated (listen and request).
+  `setRoomOpenMic` flips it; enabling it also promotes current listeners.
+
+## Validation performed
+
+* `npm run build` and `npm test` pass (32 tests; added open-mic policy coverage).
+
+## Known limitations / next steps
+
+* `openMic` and moderator promotion write the owner's room record, so policy and
+  appointments are owner-only; delegated moderators run live moderation
+  (approve, move to audience, remove) but do not change room policy.
+* Server-side host-authority verification on the media/moderation endpoints
+  remains the pre-public hardening.

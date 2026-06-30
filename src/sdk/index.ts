@@ -22,6 +22,7 @@ export async function createRoom(client: RepositoryClient, input: CreateRoomInpu
     description: input.description?.trim() || undefined,
     livekitRoom: input.livekitRoom ?? makeLiveKitRoomName(client.did, input.title),
     serviceEndpoint: input.serviceEndpoint?.replace(/\/+$/, '') || undefined,
+    openMic: input.openMic || undefined,
     status: 'live',
     createdAt: now,
     lastActiveAt: now,
@@ -58,6 +59,15 @@ export async function removeRoomHost(client: RepositoryClient, uri: string, did:
   const value = existing.value as BeachwaveRoomRecord;
   const hosts = (value.hosts ?? []).filter((host) => host !== did);
   const record = { ...value, hosts };
+  assertRoomRecord(record);
+  const updated = await client.updateRecord(uri, record);
+  return toRoom(updated.uri, updated.cid, record);
+}
+
+/** Set a room's open-mic policy. Owner action — writes the owner's record. */
+export async function setRoomOpenMic(client: RepositoryClient, uri: string, openMic: boolean): Promise<BeachwaveRoom> {
+  const existing = await client.getRecord(uri);
+  const record = { ...(existing.value as object), openMic };
   assertRoomRecord(record);
   const updated = await client.updateRecord(uri, record);
   return toRoom(updated.uri, updated.cid, record);
