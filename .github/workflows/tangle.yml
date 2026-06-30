@@ -1,0 +1,32 @@
+# Mirror this repository to Tangled (https://tangled.org) on every push.
+#
+# Tangled is a git host built on ATProto. There is no GitHub import button, so
+# this job pushes all branches and tags to a Tangled repo over SSH.
+#
+# One-time setup (all in GitHub web Settings -> Secrets and variables -> Actions):
+#   * Secret  TANGLED_KEY   the private SSH key whose public half is registered
+#                           on Tangled (Settings -> Keys).
+#   * Variable TANGLED_REPO the Tangled repo path, "<your-handle>/<repo-name>"
+#                           e.g. "ronbronson.dev/beachwave".
+#
+# Run it on demand from the Actions tab ("Run workflow"), or let it fire on push.
+
+name: Mirror to Tangled
+
+on:
+  push:
+    branches: ['**']
+    tags: ['**']
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  tangle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: gwennlbh/to-tangled@v0.6
+        with:
+          repo: ${{ vars.TANGLED_REPO }}
+          ssh-key: ${{ secrets.TANGLED_KEY }}
