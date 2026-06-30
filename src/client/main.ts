@@ -115,11 +115,6 @@ function renderSignIn(message = ''): void {
           <div class="lp-hero-copy">
             <div class="lp-pill"><span class="lp-pill-dot"><span></span></span>Live audio on the open protocol</div>
             <h1>Open the mic.<br /><span class="accent">Own the room.</span></h1>
-            <p class="lp-lead">
-              Beachwave is a reference implementation for live audio on ATProto. Your
-              identity and every room live in your own repository — Beachwave just hands
-              the conversation to LiveKit and gets out of the way.
-            </p>
             <div class="lp-cta">
               <a class="btn-lg" href="#signin"><img src="beachwave.svg" alt="" />Sign in with ATProto</a>
               <a class="btn-lg ghost" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">View the GitHub repo →</a>
@@ -147,30 +142,6 @@ function renderSignIn(message = ''): void {
             </div>
           </div>
         </div>
-
-        <div class="lp-primitives">
-          <div class="lp-prim-head">
-            <h2>Three primitives. No platform.</h2>
-            <a class="accent-link" href="#signin">Try it →</a>
-          </div>
-          <div class="lp-prim-grid">
-            <div class="lp-prim">
-              <div class="lp-prim-ico" style="background:rgba(79,176,224,.16)"><i style="width:18px;height:18px;border-radius:6px;background:#4FB0E0"></i></div>
-              <h3>Identity is yours</h3>
-              <p>Sign in with your own ATProto account on any host. Every action runs against your repository, never a Beachwave server.</p>
-            </div>
-            <div class="lp-prim">
-              <div class="lp-prim-ico" style="background:rgba(247,193,187,.18)"><i style="width:18px;height:18px;border-radius:50%;background:#F7C1BB"></i></div>
-              <h3>Rooms are data</h3>
-              <p>A room is just a record in your repo — title, status, hosts. Portable, authoritative, and discoverable by any compatible client.</p>
-            </div>
-            <div class="lp-prim">
-              <div class="lp-prim-ico" style="background:rgba(220,19,108,.16)"><i style="width:18px;height:8px;border-radius:4px;background:#DC136C"></i></div>
-              <h3>Audio just flows</h3>
-              <p>The conversation is handed to LiveKit for low-latency transport. Swap the media layer anytime — the protocol doesn't care.</p>
-            </div>
-          </div>
-        </div>
       </section>
 
       <section class="signin" id="signin">
@@ -179,12 +150,6 @@ function renderSignIn(message = ''): void {
           <div class="signin-left panel-dark">
             <img class="signin-logo" src="beachwave.svg" alt="Beachwave" />
             <h2>Sign in with your<br />ATProto account.</h2>
-            <p>No new account. No password held by us. We redirect to your own provider and act on your repository on your behalf.</p>
-            <ul class="signin-points">
-              <li>Browser-native, no extra install</li>
-              <li>Works with any handle on any host</li>
-              <li>Your rooms stay in your repo</li>
-            </ul>
           </div>
           <div class="signin-right">
             <form id="oauth-form">
@@ -213,27 +178,7 @@ function renderSignIn(message = ''): void {
       </section>
 
       <div class="lp-footer-wrap">
-        <div class="lp-footer">
-          <div class="lp-footer-brand">
-            <a class="lp-brand" href="#top"><img src="beachwave.svg" alt="" /><span>Beachwave</span></a>
-            <p>An open reference implementation for live audio on ATProto. Identity and rooms in your repository; media on LiveKit. Fork it, build your own client.</p>
-          </div>
-          <div class="lp-footer-cols">
-            <div>
-              <h4>PROTOCOL</h4>
-              <span>Room records</span>
-              <span>Identity &amp; auth</span>
-              <span>Media handoff</span>
-            </div>
-            <div>
-              <h4>PROJECT</h4>
-              <a href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">GitHub</a>
-              <a href="${GITHUB_REPO_URL}#readme" target="_blank" rel="noopener">Documentation</a>
-              <a href="${GITHUB_REPO_URL}/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
-            </div>
-          </div>
-        </div>
-        <div class="lp-footer-base"><span>Beachwave · open reference client</span><span>Built on ATProto + LiveKit</span></div>
+        <div class="lp-footer-base"><span>Beachwave · open reference client</span><span>Built on ATProto + LiveKit</span><span>a prototype made by <a href="https://ronbronson.dev" target="_blank" rel="noopener">ronbronson.dev</a></span></div>
       </div>
     </div>
   `;
