@@ -621,3 +621,47 @@ scale. Moderation moves into a dedicated room-level panel with bulk controls.
   (approve, move to audience, remove) but do not change room policy.
 * Server-side host-authority verification on the media/moderation endpoints
   remains the pre-public hardening.
+
+---
+
+# Milestone 11 — Host-authority verification and per-room link cards
+
+## Summary
+
+Two pre-public hardening items the earlier milestones called out: the
+media/moderation endpoints trusted whatever identity the caller claimed, and a
+shared room link previewed with the same static logo for every room. Both are
+addressed here.
+
+## What was done
+
+* **Host-authority verification (opt-in).** A new `lib/auth.js` verifies an
+  ATProto service-auth JWT (`com.atproto.server.getServiceAuth`, bound to the
+  `community.beachwave.moderate` method) against the caller's published signing
+  key, and `lib/room.js` resolves a room record server-side. `api/token`,
+  `api/grant-speak`, and `api/remove-participant` now, when
+  `BEACHWAVE_VERIFY_AUTH=1`, require a valid token, confirm the room's
+  `livekitRoom` matches, and derive authority from the record: the token is
+  bound to the verified DID, publish permission comes from host membership or
+  the room's open-mic policy, and grant/remove require host privileges. The
+  browser mints the token (`createServiceAuth`) and sends it as a Bearer header.
+  Enforcement is default-off, so existing deployments keep working until a
+  deployer turns it on.
+* **Per-room Open Graph card image.** `api/og-image` (edge, `@vercel/og`) draws a
+  1200×630 card with the room title, host, and live/ended state on the Beachwave
+  gradient. `api/room-page` points `og:image` at it. It falls back to a branded
+  card when the room can't be resolved.
+
+## Validation performed
+
+* `npm run build` and `npm test` pass (36 tests; added `isHost` host-authority
+  coverage). The OG renderer was smoke-tested to emit a valid PNG, including the
+  null-child paths (ended badge, missing host).
+
+## Known limitations / next steps
+
+* The JWT-signature path depends on live DID/key resolution, so it is exercised
+  end-to-end rather than unit-tested; only the pure authority logic (`isHost`)
+  has unit coverage.
+* `BEACHWAVE_VERIFY_AUTH` is off by default; turning it on is the remaining step
+  to close the trust-the-caller posture in production.
