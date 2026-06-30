@@ -309,7 +309,10 @@ label { display: block; font-weight: 700; font-size: 13px; color: var(--muted); 
 .speaker-name { font-weight: 700; font-size: 14px; color: #fff; }
 .speaker-role { font-size: 11.5px; color: rgba(255, 255, 255, .4); font-weight: 600; margin-top: 2px; }
 .speaker-role.host { color: var(--pink); letter-spacing: .04em; }
-.speaker-role.live { color: var(--sky); }
+.speaker-role.live { color: var(--sky); font-weight: 800; }
+/* Active speaker: a clear lit ring + glow on the avatar and a lit name. */
+.speaker.speaking .avatar { outline: 3px solid var(--sky); outline-offset: 3px; box-shadow: 0 0 22px rgba(79, 176, 224, .65); animation: bwRing 1.5s ease-out infinite; }
+.speaker.speaking .speaker-name { color: var(--sky); }
 .listener-grid { display: flex; flex-wrap: wrap; gap: 16px 10px; padding-bottom: 8px; }
 .listener { text-align: center; width: 58px; }
 .listener .avatar { width: 50px; height: 50px; font-size: 15px; margin: 0 auto 6px; }
@@ -322,6 +325,13 @@ label { display: block; font-weight: 700; font-size: 13px; color: var(--muted); 
 .btn-leave:hover { background: rgba(220, 19, 108, .26); }
 .audio-unlock { padding: 0 26px; display: grid; }
 .audio-unlock button { background: var(--pink); box-shadow: 0 10px 28px rgba(220, 19, 108, .22); }
+.btn-mic.ghost { background: rgba(255, 255, 255, .08); color: #fff; border: 1px solid rgba(255, 255, 255, .2); box-shadow: none; }
+.btn-mic.ghost:hover { background: rgba(255, 255, 255, .14); }
+.btn-mic:disabled { opacity: .6; cursor: default; transform: none; }
+.request-control { display: flex; }
+.request-list { display: grid; gap: 10px; }
+.request-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 13px; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .12); }
+.request-name { font-weight: 700; color: #fff; margin-right: auto; }
 
 /* chat rail */
 .room-chat { border: 1px solid rgba(255, 255, 255, .09); border-radius: 24px; display: flex; flex-direction: column; height: 560px; box-shadow: 0 30px 70px rgba(0, 0, 0, .4); overflow: hidden; }

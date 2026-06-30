@@ -3,5 +3,11 @@
   "outputDirectory": ".",
   "rewrites": [
     { "source": "/client-metadata.json", "destination": "/api/client-metadata" }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    }
   ]
 }

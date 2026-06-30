@@ -308,3 +308,84 @@ to a live room — sign in to join it") and the sign-in form is scrolled into vi
   need real discovery, profile, and scheduling features (and lexicons) first.
 * In this environment the Fontshare/Google requests are subject to the network
   policy; fonts fall back to the system stack when the CDN is unreachable.
+
+---
+
+# Milestone 5 — Speaker moderation, deploy robustness, and PWA
+
+## Summary
+
+With sign-in and audio working on the deployed site, this pass closes the gaps
+that surfaced from real multi-user use: hardening OAuth deployment, making the
+"who is talking" cue obvious, letting guests request to speak with host
+approval, and making the app installable as a PWA.
+
+## What was done
+
+### OAuth deployment robustness
+
+The static `client-metadata.json` had to match the deployed origin exactly or
+sign-in failed with `invalid_client_metadata` — fragile across preview URLs,
+custom domains, and missing env vars. Replaced it with `api/client-metadata.js`,
+a function that derives every URL from the request's own Host header, plus a
+`vercel.json` rewrite serving it at `/client-metadata.json`. It now matches any
+origin automatically; the only remaining requirement is that the deployment be
+publicly reachable (Vercel Deployment Protection off).
+
+### Mobile audio unlock
+
+Mobile browsers block audio playback and mic capture outside a direct gesture.
+The adapter no longer auto-enables the mic inside `join()`; the client enables it
+from a tap (with an "Enable mic" retry), and a "Tap to enable audio" control
+appears when the browser reports playback blocked (`canPlaybackAudio` /
+`AudioPlaybackStatusChanged` → `MediaSession.startAudio()`).
+
+### Speaking indicator
+
+The active speaker now lights up clearly — a solid sky ring and glow on the
+avatar and a lit name — and the local participant shows "speaking" when you talk
+(it was previously hardcoded to "you", so you never saw your own state).
+
+### Request to speak / host approval
+
+* Listeners can "Request to speak"; the signal rides an ephemeral LiveKit
+  data-channel control topic (`src/sdk/media/control.ts`), separate from chat.
+* Hosts see pending requests with Approve/Deny. A LiveKit participant's publish
+  permission is fixed in its join token, so granting requires a server call:
+  `api/grant-speak.js` uses `RoomServiceClient.updateParticipant`. The promoted
+  listener's client observes `ParticipantPermissionsChanged`, flips `canSpeak`
+  live, and shows the mic control without rejoining.
+* Room controls are state-driven (`renderControls`) so the swap from
+  "Request to speak" to the mic control happens reactively.
+* Signaling is ephemeral by design — no new lexicon. A persistent moderation
+  lexicon remains a future milestone.
+
+### Progressive Web App
+
+Added `manifest.webmanifest` (name, icons, standalone display, theme color),
+192/512 icons generated from the logo, Apple touch-icon/meta tags, and a service
+worker (`sw.js`) registered from `index.html`. The worker is deliberately
+conservative: same-origin GET only, never caches `/api/*` or OAuth callbacks
+(`?code`/`?state`), network-first for navigations (fresh app after each deploy),
+stale-while-revalidate for static assets. A `vercel.json` `Cache-Control:
+no-cache` header on `/sw.js` lets worker updates roll out.
+
+## Validation performed
+
+* `npm run build` and `npm test` pass (20 tests; added control-channel codec
+  round-trips and grant-speak endpoint validation).
+* Chromium checks: the service worker registers and activates, the manifest
+  parses (name + 3 icons), and PWA assets serve with correct MIME types
+  (`application/manifest+json`, `text/javascript`).
+* The client-metadata function was verified to emit origin-matched documents.
+
+## Known limitations / next steps
+
+* `api/token.js` and `api/grant-speak.js` trust the caller's identity/role.
+  Before a public launch, verify the caller's ATProto session and derive role /
+  host-authority server-side rather than trusting the client.
+* The LiveKit-dependent paths (audio attach, presence, chat, permission change,
+  data signaling) follow the documented v2 API and type-check, but need a real
+  two-user session to confirm end to end; the sandbox can't run one.
+* In standalone-PWA mode the OAuth redirect leaves and re-enters app scope; it
+  works in general but is worth testing per-platform (iOS especially).

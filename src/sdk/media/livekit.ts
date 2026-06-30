@@ -17,6 +17,7 @@ import type {
   MediaTokenProvider
 } from './types.js';
 import { CHAT_TOPIC, decodeChat, encodeChat } from './chat.js';
+import { CONTROL_TOPIC, decodeControl, encodeControl, type SpeakDecision, type SpeakRequest } from './control.js';
 
 const LIVEKIT_CLIENT_URL = 'https://esm.sh/livekit-client@2';
 
@@ -37,8 +38,31 @@ export class HttpMediaTokenProvider implements MediaTokenProvider {
   }
 }
 
+export interface LiveKitControllerOptions {
+  /** Endpoint that grants/revokes a participant's publish permission (host-only). */
+  grantEndpoint?: string;
+}
+
 export class LiveKitMediaController implements MediaController {
-  constructor(private readonly tokens: MediaTokenProvider) {}
+  constructor(
+    private readonly tokens: MediaTokenProvider,
+    private readonly options: LiveKitControllerOptions = {}
+  ) {}
+
+  /** Promote (or demote) a participant's publish permission via the grant endpoint. */
+  async grantSpeaker(request: { livekitRoom: string; identity: string; canPublish?: boolean }): Promise<void> {
+    if (!this.options.grantEndpoint) throw new Error('No speaker-grant endpoint is configured');
+    const res = await fetch(this.options.grantEndpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({
+        livekitRoom: request.livekitRoom,
+        identity: request.identity,
+        canPublish: request.canPublish ?? true
+      })
+    });
+    if (!res.ok) throw new Error(`Speaker grant failed (${res.status})`);
+  }
 
   async join(request: MediaJoinRequest): Promise<MediaSession> {
     const grant = await this.tokens.getGrant(request);
@@ -51,6 +75,8 @@ export class LiveKitMediaController implements MediaController {
     const canPublish = request.role === 'host' || request.role === 'speaker';
     const stateListeners = new Set<(state: MediaRoomState) => void>();
     const chatListeners = new Set<(message: ChatMessage) => void>();
+    const speakRequestListeners = new Set<(request: SpeakRequest) => void>();
+    const speakDecisionListeners = new Set<(decision: SpeakDecision) => void>();
 
     // Hidden container holding the <audio> elements for remote participants.
     // Without attaching subscribed audio tracks, nobody is actually heard.
@@ -65,7 +91,10 @@ export class LiveKitMediaController implements MediaController {
         name: p.name || undefined,
         isLocal: p === room.localParticipant,
         isSpeaking: Boolean(p.isSpeaking),
-        canSpeak: p === room.localParticipant ? canPublish : Boolean(p.permissions?.canPublish)
+        // Read live permissions so a mid-session grant promotes the participant.
+        // OR the join role for the local participant to avoid an initial flicker
+        // before permissions populate.
+        canSpeak: Boolean(p.permissions?.canPublish) || (p === room.localParticipant && canPublish)
       }));
       return {
         connected: String(room.state) === 'connected',
@@ -87,6 +116,10 @@ export class LiveKitMediaController implements MediaController {
         for (const element of track.detach()) element.remove();
       })
       .on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: LiveKitParticipant, _kind?: unknown, topic?: string) => {
+        if (topic === CONTROL_TOPIC) {
+          handleControl(payload, participant);
+          return;
+        }
         if (topic && topic !== CHAT_TOPIC) return;
         const decoded = decodeChat(payload);
         if (!decoded) return;
@@ -105,10 +138,25 @@ export class LiveKitMediaController implements MediaController {
       .on(RoomEvent.TrackUnmuted, emitState)
       .on(RoomEvent.ConnectionStateChanged, emitState)
       .on(RoomEvent.AudioPlaybackStatusChanged, emitState)
+      .on(RoomEvent.ParticipantPermissionsChanged, emitState)
       .on(RoomEvent.Disconnected, emitState);
 
     function emitChat(message: ChatMessage): void {
       for (const listener of chatListeners) listener(message);
+    }
+
+    function handleControl(payload: Uint8Array, participant?: LiveKitParticipant): void {
+      const message = decodeControl(payload);
+      if (!message) return;
+      if (message.t === 'speak-request') {
+        const request: SpeakRequest = {
+          identity: participant?.identity ?? 'unknown',
+          name: message.name ?? participant?.name ?? undefined
+        };
+        for (const listener of speakRequestListeners) listener(request);
+      } else if (message.t === 'speak-decision') {
+        for (const listener of speakDecisionListeners) listener({ target: message.target, approved: message.approved });
+      }
     }
 
     // The microphone is enabled by the caller from a user gesture, not here:
@@ -126,6 +174,27 @@ export class LiveKitMediaController implements MediaController {
       onChat(listener) {
         chatListeners.add(listener);
         return () => chatListeners.delete(listener);
+      },
+      onSpeakRequest(listener) {
+        speakRequestListeners.add(listener);
+        return () => speakRequestListeners.delete(listener);
+      },
+      onSpeakDecision(listener) {
+        speakDecisionListeners.add(listener);
+        return () => speakDecisionListeners.delete(listener);
+      },
+      async requestToSpeak() {
+        const name = room.localParticipant.name || request.displayName;
+        await room.localParticipant.publishData(encodeControl({ t: 'speak-request', name }), {
+          reliable: true,
+          topic: CONTROL_TOPIC
+        });
+      },
+      async decideSpeak(target, approved) {
+        await room.localParticipant.publishData(encodeControl({ t: 'speak-decision', target, approved }), {
+          reliable: true,
+          topic: CONTROL_TOPIC
+        });
       },
       async startAudio() {
         await room.startAudio();
@@ -152,6 +221,8 @@ export class LiveKitMediaController implements MediaController {
         audioSink.remove();
         stateListeners.clear();
         chatListeners.clear();
+        speakRequestListeners.clear();
+        speakDecisionListeners.clear();
       }
     };
   }
