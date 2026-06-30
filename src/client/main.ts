@@ -60,6 +60,7 @@ const mediaController: LiveKitMediaController | undefined = mediaTokenEndpoint
 
 const PENDING_ROOM_KEY = 'beachwave.pendingRoom';
 const GITHUB_REPO_URL = 'https://github.com/quarterback/beachwave';
+const TANGLED_REPO_URL = 'https://tangled.org/ronbronson.com/beachwave';
 
 let account: Account | undefined;
 let rooms: BeachwaveRoom[] = [];
@@ -119,6 +120,7 @@ function renderSignIn(message = ''): void {
         <nav class="lp-links">
           <a href="#signin">Sign in</a>
           <a class="lp-repo" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">GitHub repo ↗</a>
+          <a class="lp-repo" href="${TANGLED_REPO_URL}" target="_blank" rel="noopener">Tangled mirror ↗</a>
         </nav>
       </header>
 
@@ -191,7 +193,7 @@ function renderSignIn(message = ''): void {
       </section>
 
       <div class="lp-footer-wrap">
-        <div class="lp-footer-base"><span>Beachwave · open reference client</span><span>Built on ATProto + LiveKit</span><span>a prototype made by <a href="https://ronbronson.dev" target="_blank" rel="noopener">ronbronson.dev</a></span></div>
+        <div class="lp-footer-base"><span>Beachwave · open reference client</span><span>Built on ATProto + LiveKit</span><span><a href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">GitHub</a> · <a href="${TANGLED_REPO_URL}" target="_blank" rel="noopener">Tangled</a></span><span>a prototype made by <a href="https://ronbronson.dev" target="_blank" rel="noopener">ronbronson.dev</a></span></div>
       </div>
     </div>
   `;
