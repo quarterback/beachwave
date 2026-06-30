@@ -540,3 +540,51 @@ record say where its media lives, so any fork can join any room's audio.
   that server-side host-authority verification is the key pre-launch hardening.
 * OAuth sessions are per-origin: a user joining a remote room stays signed in on
   their own instance (media routes to the host), which is the intended model.
+
+---
+
+# Milestone 9 — Shareable room cards and moderator roles
+
+## Summary
+
+Two pieces of polish from real use: room links now unfurl as room-specific
+cards, and a room owner can promote others to co-moderators (not just speakers).
+
+## What was done
+
+### Per-room link cards
+
+`api/room-page.js` (reached via a `/?room=...` rewrite) resolves the room record
+server-side and rewrites the page's Open Graph / Twitter metadata to the room's
+title and description, while still serving the full SPA. Link unfurlers that
+don't run JS now get a room-specific card instead of the generic site card;
+edge-cached, with a graceful fallback for unresolvable rooms.
+
+### Moderator roles
+
+* `addRoomHost` / `removeRoomHost` update the room record's `hosts` list (owner
+  action — only the owner can write their record).
+* The roster shows host-only buttons: **Invite** / **Move to audience** (the
+  clearer name for demoting a speaker), **Make mod** / **Remove mod** (owner
+  only), and **Remove**. Promoted moderators gain the same toolbar.
+* A `role-update` control-channel ping tells the affected client to re-read the
+  room record, so a newly promoted moderator gets their tools in real time
+  without rejoining. Roster role labels show host / moderator / speaker.
+* Because moderation calls already route through the room's controller
+  (`serviceEndpoint`), a moderator on another instance can moderate through the
+  host's deployment.
+
+## Validation performed
+
+* `npm run build` and `npm test` pass (31 tests; added room-page rendering,
+  role-update codec, and `addRoomHost`/`removeRoomHost` coverage).
+
+## Known limitations / next steps
+
+* Moderator promotion writes the owner's room record, so only the owner promotes;
+  delegated moderators can run live moderation (speak/remove) but not appoint
+  other moderators.
+* The link card uses the static logo image; a dynamically rendered card image
+  (room title) is a future enhancement.
+* The trust-the-caller posture on media/moderation endpoints still stands;
+  server-side host-authority verification remains the pre-launch hardening.

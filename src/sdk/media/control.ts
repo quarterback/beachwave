@@ -25,7 +25,8 @@ export interface SpeakDecision {
 
 type ControlWire =
   | { t: 'speak-request'; name?: string }
-  | { t: 'speak-decision'; target: string; approved: boolean };
+  | { t: 'speak-decision'; target: string; approved: boolean }
+  | { t: 'role-update'; target: string };
 
 export function encodeControl(message: ControlWire): Uint8Array {
   return utf8ToBytes(JSON.stringify(message));
@@ -39,6 +40,9 @@ export function decodeControl(bytes: Uint8Array): ControlWire | null {
     }
     if (parsed.t === 'speak-decision' && typeof parsed.target === 'string' && typeof parsed.approved === 'boolean') {
       return { t: 'speak-decision', target: parsed.target, approved: parsed.approved };
+    }
+    if (parsed.t === 'role-update' && typeof parsed.target === 'string') {
+      return { t: 'role-update', target: parsed.target };
     }
     return null;
   } catch {

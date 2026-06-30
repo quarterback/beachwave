@@ -159,3 +159,39 @@ test('remove-participant validates input and configuration', async () => {
   delete process.env.LIVEKIT_API_SECRET;
   delete process.env.LIVEKIT_URL;
 });
+
+import roomPage from '../api/room-page.js';
+
+test('room-page injects per-room Open Graph tags and still serves the app', async () => {
+  const shell = '<head>\n<!-- og:start -->\n<title>Beachwave</title>\n<meta property="og:title" content="Beachwave" />\n<!-- og:end -->\n</head><body><div id="root"></div></body>';
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.endsWith('/index.html')) return { ok: true, text: async () => shell };
+    if (u.includes('plc.directory')) return { ok: true, json: async () => ({ service: [{ id: '#atproto_pds', type: 'AtprotoPersonalDataServer', serviceEndpoint: 'https://pds.example' }] }) };
+    if (u.includes('getRecord')) return { ok: true, json: async () => ({ value: { title: 'Office <Hours>', description: 'hang', status: 'live' } }) };
+    return { ok: false };
+  };
+  try {
+    let res = mockRes();
+    res.send = (b) => { res.body = b; return res; };
+    await roomPage({ headers: { host: 'beachwave.app' }, query: { room: 'at://did:plc:abc/community.beachwave.room/3k' } }, res);
+    assert.equal(res.code, 200);
+    assert.match(res.body, /Office &lt;Hours&gt; · live on Beachwave/);
+    assert.match(res.body, /id="root"/); // app still loads
+    assert.doesNotMatch(res.body, /Forkable live audio for ATProto/); // generic card replaced
+
+    // No room param -> shell returned unchanged.
+    res = mockRes();
+    res.send = (b) => { res.body = b; return res; };
+    await roomPage({ headers: { host: 'beachwave.app' }, query: {} }, res);
+    assert.match(res.body, /<title>Beachwave<\/title>/);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('control codec carries role-update pings', () => {
+  assert.deepEqual(decodeControl(encodeControl({ t: 'role-update', target: 'did:plc:abc' })), { t: 'role-update', target: 'did:plc:abc' });
+  assert.equal(decodeControl(new TextEncoder().encode(JSON.stringify({ t: 'role-update' }))), null);
+});

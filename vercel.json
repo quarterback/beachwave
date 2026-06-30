@@ -2,7 +2,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/client-metadata.json", "destination": "/api/client-metadata" }
+    { "source": "/client-metadata.json", "destination": "/api/client-metadata" },
+    { "source": "/", "has": [{ "type": "query", "key": "room" }], "destination": "/api/room-page" }
   ],
   "headers": [
     {

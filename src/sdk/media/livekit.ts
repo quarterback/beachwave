@@ -90,6 +90,7 @@ export class LiveKitMediaController implements MediaController {
     const chatListeners = new Set<(message: ChatMessage) => void>();
     const speakRequestListeners = new Set<(request: SpeakRequest) => void>();
     const speakDecisionListeners = new Set<(decision: SpeakDecision) => void>();
+    const roleUpdateListeners = new Set<(target: string) => void>();
 
     // Hidden container holding the <audio> elements for remote participants.
     // Without attaching subscribed audio tracks, nobody is actually heard.
@@ -168,6 +169,8 @@ export class LiveKitMediaController implements MediaController {
         for (const listener of speakRequestListeners) listener(request);
       } else if (message.t === 'speak-decision') {
         for (const listener of speakDecisionListeners) listener({ target: message.target, approved: message.approved });
+      } else if (message.t === 'role-update') {
+        for (const listener of roleUpdateListeners) listener(message.target);
       }
       return true;
     }
@@ -209,6 +212,16 @@ export class LiveKitMediaController implements MediaController {
           topic: CONTROL_TOPIC
         });
       },
+      onRoleUpdate(listener) {
+        roleUpdateListeners.add(listener);
+        return () => roleUpdateListeners.delete(listener);
+      },
+      async notifyRoleUpdate(target) {
+        await room.localParticipant.publishData(encodeControl({ t: 'role-update', target }), {
+          reliable: true,
+          topic: CONTROL_TOPIC
+        });
+      },
       async startAudio() {
         await room.startAudio();
         emitState();
@@ -236,6 +249,7 @@ export class LiveKitMediaController implements MediaController {
         chatListeners.clear();
         speakRequestListeners.clear();
         speakDecisionListeners.clear();
+        roleUpdateListeners.clear();
       }
     };
   }

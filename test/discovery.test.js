@@ -72,3 +72,23 @@ test('createRoom records the serviceEndpoint so rooms are joinable cross-instanc
   const stored = await client.getRecord(room.uri);
   assert.equal(stored.value.serviceEndpoint, 'https://host.example');
 });
+
+import { addRoomHost, removeRoomHost } from '../dist/sdk/index.js';
+
+test('addRoomHost / removeRoomHost manage the moderator list', async () => {
+  const client = new MemoryRepositoryClient('did:example:host');
+  const room = await createRoom(client, { title: 'Mods' });
+  assert.deepEqual(room.record.hosts, ['did:example:host']); // owner is a host
+
+  const withMod = await addRoomHost(client, room.uri, 'did:example:mod');
+  assert.ok(withMod.record.hosts.includes('did:example:mod'));
+  assert.ok(withMod.record.hosts.includes('did:example:host'));
+  assert.equal(withMod.record.status, 'live'); // other fields preserved
+
+  // idempotent
+  const again = await addRoomHost(client, room.uri, 'did:example:mod');
+  assert.equal(again.record.hosts.filter((h) => h === 'did:example:mod').length, 1);
+
+  const without = await removeRoomHost(client, room.uri, 'did:example:mod');
+  assert.equal(without.record.hosts.includes('did:example:mod'), false);
+});
