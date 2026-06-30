@@ -9,6 +9,7 @@ export function assertRoomRecord(value: unknown): asserts value is BeachwaveRoom
   if (typeof record.livekitRoom !== 'string' || record.livekitRoom.trim().length === 0) throw new Error('LiveKit room is required');
   if (record.status !== 'live' && record.status !== 'ended') throw new Error('Room status must be live or ended');
   if (typeof record.createdAt !== 'string' || Number.isNaN(Date.parse(record.createdAt))) throw new Error('createdAt must be an ISO datetime');
+  if (record.lastActiveAt !== undefined && (typeof record.lastActiveAt !== 'string' || Number.isNaN(Date.parse(record.lastActiveAt)))) throw new Error('lastActiveAt must be an ISO datetime');
   if (record.endedAt !== undefined && (typeof record.endedAt !== 'string' || Number.isNaN(Date.parse(record.endedAt)))) throw new Error('endedAt must be an ISO datetime');
   if (record.hosts !== undefined && (!Array.isArray(record.hosts) || record.hosts.some((host) => typeof host !== 'string' || !host.startsWith('did:')))) throw new Error('hosts must be DID strings');
 }

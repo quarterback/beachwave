@@ -389,3 +389,63 @@ no-cache` header on `/sw.js` lets worker updates roll out.
   two-user session to confirm end to end; the sandbox can't run one.
 * In standalone-PWA mode the OAuth redirect leaves and re-enters app scope; it
   works in general but is worth testing per-platform (iOS especially).
+
+---
+
+# Milestone 6 — Discovery (follows-based "live now") and room TTL
+
+## Summary
+
+Rooms were reachable only by link, and a host who closed the tab left a ghost
+"live" record forever. This pass adds no-backend discovery from the social graph
+and a heartbeat so liveness stays honest — the two pieces that turn "you need the
+link" into "your people can find you."
+
+## What was done
+
+### Room heartbeat / TTL
+
+* Added an optional `lastActiveAt` field to `community.beachwave.room` (lexicon,
+  types, validation).
+* `createRoom` stamps `lastActiveAt`; `touchRoom(client, uri)` refreshes it.
+* `isRoomLive(record, now, ttl)` treats a live room as ended once `lastActiveAt`
+  is older than `ROOM_LIVE_TTL_MS` (5 min). Records with no `lastActiveAt`
+  (older or third-party) fall back to status only, preserving interop.
+* The client runs a heartbeat (every TTL/2) while the local user hosts a room,
+  and stops it on leave/sign-out. So a closed tab ages out of discovery.
+
+### Follows-based discovery
+
+* `listFollowDids(did)` reads the viewer's Bluesky follow graph from a public
+  appview (`app.bsky.graph.getFollows`).
+* `discoverLiveRooms(client, repos)` checks those repositories for room records,
+  concurrency-limited (`mapWithConcurrency`) and fault-tolerant (a repo that
+  fails or has none is skipped), returning only currently-live rooms, newest
+  first.
+* The dashboard gains a "Live now · from people you follow" lobby, populated on
+  load and refresh. Offline demo mode skips it.
+
+This is deliberately the cheapest discovery layer: link → follows → appview. A
+global "live now" index would need a firehose crawler; because the room lexicon
+is open, that remains a separable (even third-party) component and was scoped
+out.
+
+## Validation performed
+
+* `npm run build` and `npm test` pass (25 tests; added `test/discovery.test.js`
+  covering `isRoomLive` TTL logic, `touchRoom`, `discoverLiveRooms` filtering and
+  ordering, and `mapWithConcurrency` order/bounds).
+* The signed-in dashboard renders; the lobby and heartbeat are additive and
+  guarded by account kind.
+
+## Known limitations / next steps
+
+* `discoverLiveRooms` is O(follows): it resolves and lists each followed repo. It
+  is capped (150 follows) and concurrency-limited, but a heavy-follow account
+  pays a real per-refresh cost. A global index would remove this.
+* Discovery needs two mutually-following accounts to see in practice, which the
+  sandbox can't exercise; verify with real accounts.
+* The heartbeat only runs while a host's tab is open; a global index could
+  reconcile liveness against LiveKit room state instead.
+* Discovery currently surfaces public rooms only; invite-only rooms would need a
+  room-record allowlist and a server-side token check.
