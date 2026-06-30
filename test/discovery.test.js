@@ -92,3 +92,20 @@ test('addRoomHost / removeRoomHost manage the moderator list', async () => {
   const without = await removeRoomHost(client, room.uri, 'did:example:mod');
   assert.equal(without.record.hosts.includes('did:example:mod'), false);
 });
+
+import { setRoomOpenMic } from '../dist/sdk/index.js';
+
+test('open-mic policy is stored and toggleable', async () => {
+  const client = new MemoryRepositoryClient('did:example:host');
+  const moderated = await createRoom(client, { title: 'Moderated' });
+  assert.equal(moderated.record.openMic, undefined); // moderated by default
+
+  const open = await createRoom(client, { title: 'Open', openMic: true });
+  assert.equal(open.record.openMic, true);
+
+  const flipped = await setRoomOpenMic(client, moderated.uri, true);
+  assert.equal(flipped.record.openMic, true);
+  assert.equal(flipped.record.status, 'live'); // other fields preserved
+  const back = await setRoomOpenMic(client, moderated.uri, false);
+  assert.equal(back.record.openMic, false);
+});

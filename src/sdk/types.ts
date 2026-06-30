@@ -8,6 +8,8 @@ export interface BeachwaveRoomRecord {
   livekitRoom: string;
   /** Base URL of the host's deployment; clients join media via `<serviceEndpoint>/api/token`. */
   serviceEndpoint?: string;
+  /** When true, participants join able to speak; otherwise they listen and request. */
+  openMic?: boolean;
   status: RoomStatus;
   createdAt: string;
   /** Host heartbeat; a live room with a stale lastActiveAt is treated as ended. */
@@ -30,6 +32,8 @@ export interface CreateRoomInput {
   hosts?: string[];
   /** Base URL of this deployment, so the room is joinable across instances. */
   serviceEndpoint?: string;
+  /** Start the room as open mic (everyone speaks) instead of moderated. */
+  openMic?: boolean;
 }
 
 export interface JoinRoomResult {

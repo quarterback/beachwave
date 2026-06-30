@@ -10,6 +10,7 @@ import {
   listFollowDids,
   listRooms,
   removeRoomHost,
+  setRoomOpenMic,
   touchRoom,
   ROOM_LIVE_TTL_MS,
   HttpMediaTokenProvider,
@@ -503,6 +504,11 @@ async function handleJoin(room: BeachwaveRoom): Promise<void> {
             <div class="room-section-label" id="listeners-label">LISTENERS</div>
             <div id="listeners" class="listener-grid"></div>
           </div>
+          <details class="mod-panel" id="mod-panel" hidden>
+            <summary>Moderator tools</summary>
+            <div class="mod-bulk" id="mod-bulk"></div>
+            <div class="mod-people" id="mod-people"></div>
+          </details>
           <div id="audio-unlock" class="audio-unlock" hidden></div>
           <div class="room-controls">
             <div id="stage-media" class="room-controls-media"></div>
@@ -808,8 +814,6 @@ function renderParticipants(state: MediaRoomState): void {
     role.textContent = roleLabel(participant);
 
     item.append(avatar, name, role);
-    const actions = hostActions(participant, true);
-    if (actions) item.append(actions);
     return item;
   }));
 
@@ -837,10 +841,96 @@ function renderParticipants(state: MediaRoomState): void {
       roleEl.textContent = badge;
       item.append(roleEl);
     }
-    const actions = hostActions(participant, false);
-    if (actions) item.append(actions);
     return item;
   }));
+
+  renderModPanel(state);
+}
+
+/**
+ * Room-level moderation, shown to admins only. Bulk controls plus one row per
+ * person, so a host can manage a full room without hunting through the roster.
+ */
+function renderModPanel(state: MediaRoomState): void {
+  const panel = app!.querySelector<HTMLDetailsElement>('#mod-panel');
+  if (!panel) return;
+  const isAdmin = !!activeRoom && account!.kind !== 'offline' && !!activeController && canAdminister(activeRoom);
+  if (!isAdmin) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+
+  // Bulk controls.
+  const bulk = app!.querySelector<HTMLElement>('#mod-bulk')!;
+  bulk.replaceChildren();
+  const muteAllBtn = actionButton('Mute all', () => void muteAll());
+  bulk.append(muteAllBtn);
+  if (isRoomOwner(activeRoom!)) {
+    const open = activeRoom!.record.openMic === true;
+    const toggle = actionButton(open ? 'Open mic: on' : 'Open mic: off', () => void toggleOpenMic(!open));
+    if (open) toggle.classList.add('on');
+    bulk.append(toggle);
+  }
+
+  // Per-person rows (everyone except yourself).
+  const people = app!.querySelector<HTMLElement>('#mod-people')!;
+  const others = state.participants.filter((p) => !p.isLocal);
+  people.replaceChildren(...others.map((participant) => {
+    const row = document.createElement('div');
+    row.className = 'mod-row';
+
+    const label = document.createElement('span');
+    label.className = 'mod-row-name';
+    label.textContent = participant.name || shortDid(participant.identity);
+
+    const actions = hostActions(participant, participant.canSpeak);
+    row.append(label);
+    if (actions) row.append(actions);
+    return row;
+  }));
+  if (others.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'muted-note';
+    empty.textContent = 'No one else is here yet.';
+    people.append(empty);
+  }
+}
+
+async function muteAll(): Promise<void> {
+  if (!activeController || !activeRoom || !mediaSession) return;
+  const targets = mediaSession.getState().participants.filter((p) => p.canSpeak && !p.isLocal && !isAdminDid(p.identity));
+  let moved = 0;
+  for (const participant of targets) {
+    try {
+      await activeController.grantSpeaker({ livekitRoom: activeRoom.record.livekitRoom, identity: participant.identity, canPublish: false });
+      moved += 1;
+    } catch {
+      // continue with the rest
+    }
+  }
+  setStatus(`Moved ${moved} ${moved === 1 ? 'speaker' : 'speakers'} to the audience.`);
+}
+
+async function toggleOpenMic(on: boolean): Promise<void> {
+  if (!activeRoom || !isRoomOwner(activeRoom)) return;
+  try {
+    activeRoom = await setRoomOpenMic(account!.client, activeRoom.uri, on);
+    if (on && activeController && mediaSession) {
+      const listeners = mediaSession.getState().participants.filter((p) => !p.canSpeak && !p.isLocal && !isAdminDid(p.identity));
+      for (const participant of listeners) {
+        try {
+          await activeController.grantSpeaker({ livekitRoom: activeRoom.record.livekitRoom, identity: participant.identity, canPublish: true });
+        } catch {
+          // continue
+        }
+      }
+    }
+    setStatus(on ? 'Open mic on. Everyone can speak.' : 'Open mic off. New joiners listen and request.');
+    if (mediaSession) onRoomState(mediaSession.getState());
+  } catch (error) {
+    setStatus(describeError(error));
+  }
 }
 
 /** Role text for a speaker card. */
@@ -1109,7 +1199,14 @@ function forgetSharedRoom(): void {
 // ---------------------------------------------------------------------------
 
 function participantRole(room: BeachwaveRoom): ParticipantRole {
-  return canAdminister(room) ? 'host' : 'listener';
+  if (canAdminister(room)) return 'host';
+  return room.record.openMic ? 'speaker' : 'listener';
+}
+
+/** A DID that should never be auto-muted: the owner or a moderator. */
+function isAdminDid(did: string): boolean {
+  if (!activeRoom) return false;
+  return did === activeRoom.authorDid || (activeRoom.record.hosts ?? []).includes(did);
 }
 
 function canAdminister(room: BeachwaveRoom): boolean {

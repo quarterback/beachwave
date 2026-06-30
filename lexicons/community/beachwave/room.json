@@ -15,6 +15,7 @@
           "livekitRoom": { "type": "string", "maxLength": 256, "description": "LiveKit room identifier used for media transport." },
           "serviceEndpoint": { "type": "string", "format": "uri", "description": "Base URL of the host's deployment. Clients join media via <serviceEndpoint>/api/token, so a room is reachable across instances." },
           "status": { "type": "string", "knownValues": ["live", "ended"], "description": "Current lifecycle state." },
+          "openMic": { "type": "boolean", "description": "When true, participants join able to speak; when absent or false, they join as listeners and request to speak." },
           "createdAt": { "type": "string", "format": "datetime" },
           "lastActiveAt": { "type": "string", "format": "datetime", "description": "Host heartbeat. Clients may treat a live room with a stale lastActiveAt as ended." },
           "endedAt": { "type": "string", "format": "datetime" },
