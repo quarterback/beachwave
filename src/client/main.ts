@@ -51,6 +51,9 @@ let rooms: BeachwaveRoom[] = [];
 let activeRoom: BeachwaveRoom | undefined;
 let mediaSession: MediaSession | undefined;
 let mediaUnsubscribers: Array<() => void> = [];
+// Controller in use for the active room — local for your own rooms, or pointed
+// at the host's deployment for a room discovered on another instance.
+let activeController: LiveKitMediaController | undefined;
 
 // Per-room speaker-moderation state, reset on each join/leave.
 let micOn = false;
@@ -395,7 +398,7 @@ async function handleCreate(event: SubmitEvent): Promise<void> {
   const announce = app!.querySelector<HTMLInputElement>('#announce')?.checked ?? false;
   setStatus('Publishing room record…');
   try {
-    const room = await createRoom(account!.client, { title, description });
+    const room = await createRoom(account!.client, { title, description, serviceEndpoint: window.location.origin });
     await refreshRooms();
     if (announce) {
       setStatus('Room created. Sharing to Bluesky…');
@@ -587,8 +590,8 @@ async function handleJoin(room: BeachwaveRoom): Promise<void> {
 async function connectMedia(livekitRoom: string, role: ParticipantRole): Promise<void> {
   const media = app!.querySelector<HTMLElement>('#stage-media')!;
   const count = app!.querySelector<HTMLElement>('#stage-count')!;
-  // The offline demo is local-only; it never connects to a real media server.
-  const controller = account!.kind === 'offline' ? undefined : mediaController;
+  const controller = controllerFor(activeRoom);
+  activeController = controller;
 
   if (!controller) {
     count.textContent = 'audio not configured';
@@ -626,6 +629,32 @@ async function connectMedia(livekitRoom: string, role: ParticipantRole): Promise
   } catch (error) {
     count.textContent = '';
     media.innerHTML = `<p class="status">${escapeHtml(describeError(error))}</p>`;
+  }
+}
+
+/**
+ * Pick the media controller for a room. Your own rooms (and rooms hosted on this
+ * deployment) use the local controller; a room discovered on another instance is
+ * joined through the host's deployment, which holds that room's LiveKit project.
+ */
+function controllerFor(room: BeachwaveRoom | undefined): LiveKitMediaController | undefined {
+  if (!room || account!.kind === 'offline') return undefined;
+  const endpoint = room.record.serviceEndpoint;
+  if (endpoint && !isSameOrigin(endpoint)) {
+    const base = endpoint.replace(/\/+$/, '');
+    return new LiveKitMediaController(new HttpMediaTokenProvider(`${base}/api/token`), {
+      grantEndpoint: `${base}/api/grant-speak`,
+      removeEndpoint: `${base}/api/remove-participant`
+    });
+  }
+  return mediaController;
+}
+
+function isSameOrigin(url: string): boolean {
+  try {
+    return new URL(url).origin === window.location.origin;
+  } catch {
+    return true;
   }
 }
 
@@ -756,7 +785,7 @@ async function decideRequest(request: SpeakRequest, approved: boolean): Promise<
   renderRequests();
   try {
     if (approved) {
-      await mediaController!.grantSpeaker({ livekitRoom: activeRoom!.record.livekitRoom, identity: request.identity });
+      await activeController!.grantSpeaker({ livekitRoom: activeRoom!.record.livekitRoom, identity: request.identity });
     }
     await mediaSession!.decideSpeak(request.identity, approved);
     setStatus(approved ? `Approved ${request.name || 'guest'} to speak.` : 'Request declined.');
@@ -850,7 +879,7 @@ function renderParticipants(state: MediaRoomState): void {
 
 /** Host-only moderation buttons for a remote participant (null otherwise). */
 function hostActions(participant: MediaParticipant, isSpeaker: boolean): HTMLElement | null {
-  if (participant.isLocal || account!.kind === 'offline' || !mediaController) return null;
+  if (participant.isLocal || account!.kind === 'offline' || !activeController) return null;
   if (!activeRoom || !canAdminister(activeRoom)) return null;
 
   const wrap = document.createElement('div');
@@ -874,19 +903,19 @@ function actionButton(label: string, onClick: () => void, danger = false): HTMLB
 }
 
 async function moderate(action: 'invite' | 'mute' | 'remove', participant: MediaParticipant): Promise<void> {
-  if (!mediaController || !activeRoom) return;
+  if (!activeController || !activeRoom) return;
   const livekitRoom = activeRoom.record.livekitRoom;
   const who = participant.name || shortDid(participant.identity);
   try {
     if (action === 'invite') {
-      await mediaController.grantSpeaker({ livekitRoom, identity: participant.identity, canPublish: true });
+      await activeController.grantSpeaker({ livekitRoom, identity: participant.identity, canPublish: true });
       await mediaSession?.decideSpeak(participant.identity, true);
       setStatus(`Invited ${who} to speak.`);
     } else if (action === 'mute') {
-      await mediaController.grantSpeaker({ livekitRoom, identity: participant.identity, canPublish: false });
+      await activeController.grantSpeaker({ livekitRoom, identity: participant.identity, canPublish: false });
       setStatus(`Moved ${who} to the audience.`);
     } else {
-      await mediaController.removeParticipant({ livekitRoom, identity: participant.identity });
+      await activeController.removeParticipant({ livekitRoom, identity: participant.identity });
       setStatus(`Removed ${who}.`);
     }
   } catch (error) {
@@ -980,6 +1009,7 @@ function stopHeartbeat(): void {
 async function leaveMedia(): Promise<void> {
   for (const unsubscribe of mediaUnsubscribers) unsubscribe();
   mediaUnsubscribers = [];
+  activeController = undefined;
   if (mediaSession) {
     try {
       await mediaSession.leave();

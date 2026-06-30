@@ -7,6 +7,7 @@ export function assertRoomRecord(value: unknown): asserts value is BeachwaveRoom
   if (record.title.length > 120) throw new Error('Room title must be 120 characters or fewer');
   if (record.description !== undefined && (typeof record.description !== 'string' || record.description.length > 1000)) throw new Error('Room description must be 1000 characters or fewer');
   if (typeof record.livekitRoom !== 'string' || record.livekitRoom.trim().length === 0) throw new Error('LiveKit room is required');
+  if (record.serviceEndpoint !== undefined && (typeof record.serviceEndpoint !== 'string' || !/^https?:\/\//.test(record.serviceEndpoint))) throw new Error('serviceEndpoint must be an http(s) URL');
   if (record.status !== 'live' && record.status !== 'ended') throw new Error('Room status must be live or ended');
   if (typeof record.createdAt !== 'string' || Number.isNaN(Date.parse(record.createdAt))) throw new Error('createdAt must be an ISO datetime');
   if (record.lastActiveAt !== undefined && (typeof record.lastActiveAt !== 'string' || Number.isNaN(Date.parse(record.lastActiveAt)))) throw new Error('lastActiveAt must be an ISO datetime');

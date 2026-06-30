@@ -103,8 +103,17 @@ function mockRes() {
   r.setHeader = (k, v) => { r.headers[k.toLowerCase()] = v; };
   r.status = (c) => { r.code = c; return r; };
   r.json = (b) => { r.body = b; return r; };
+  r.end = () => { r.ended = true; return r; };
   return r;
 }
+
+test('media endpoints answer CORS preflight so cross-instance joins work', async () => {
+  const res = mockRes();
+  await grantSpeak({ method: 'OPTIONS', headers: {} }, res);
+  assert.equal(res.code, 204);
+  assert.equal(res.headers['access-control-allow-origin'], '*');
+  assert.ok(res.ended);
+});
 
 test('grant-speak validates input and configuration', async () => {
   // Not configured -> 503

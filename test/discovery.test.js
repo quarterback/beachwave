@@ -64,3 +64,11 @@ test('mapWithConcurrency preserves order and bounds parallelism', async () => {
   });
   assert.ok(max <= 3, `max in flight ${max} should be <= 3`);
 });
+
+test('createRoom records the serviceEndpoint so rooms are joinable cross-instance', async () => {
+  const client = new MemoryRepositoryClient('did:example:host');
+  const room = await createRoom(client, { title: 'Cross', serviceEndpoint: 'https://host.example/' });
+  assert.equal(room.record.serviceEndpoint, 'https://host.example'); // trailing slash trimmed
+  const stored = await client.getRecord(room.uri);
+  assert.equal(stored.value.serviceEndpoint, 'https://host.example');
+});

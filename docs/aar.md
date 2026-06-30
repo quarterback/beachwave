@@ -498,3 +498,45 @@ topic propagation.
 * "Mute" demotes to listener rather than force-muting a still-published track;
   that is the stronger moderation action and needs no track lookup, but a
   keep-on-stage mute could be added later.
+
+---
+
+# Milestone 8 — Cross-instance media (forkable interoperability)
+
+## Summary
+
+Forking works, but live audio was implicitly bound to one deployment: a room
+discovered on instance B would mint its token on B's LiveKit project, not the
+host's, so participants wouldn't actually share audio. This pass makes the room
+record say where its media lives, so any fork can join any room's audio.
+
+## What was done
+
+* Added optional `serviceEndpoint` (the host deployment's base URL) to the room
+  lexicon, types, and validation. `createRoom` stamps it; the client passes
+  `window.location.origin`.
+* The client now picks a per-room controller (`controllerFor`): your own / same
+  -origin rooms use the local endpoints; a room whose `serviceEndpoint` is a
+  different origin is joined through `<serviceEndpoint>/api/token` (and
+  `/api/grant-speak`, `/api/remove-participant` for moderation). All media and
+  moderation calls route through that controller.
+* The three media functions (`token`, `grant-speak`, `remove-participant`) now
+  answer CORS preflight and allow cross-origin POSTs, so a guest on another
+  deployment can reach the host's endpoints.
+* Documented the model in `protocol.md`: the ATProto record layer stays fully
+  portable; `serviceEndpoint` tells any client where the media lives.
+
+## Validation performed
+
+* `npm run build` and `npm test` pass (28 tests; added `serviceEndpoint`
+  persistence and a CORS-preflight test).
+
+## Known limitations / next steps
+
+* `serviceEndpoint` is derived as `<origin>/api/...`; a fork that serves the API
+  under non-default paths would need to advertise those explicitly.
+* CORS is `*` on the media endpoints — necessary for cross-instance joins and
+  consistent with the existing "trusts the caller" posture, but it reinforces
+  that server-side host-authority verification is the key pre-launch hardening.
+* OAuth sessions are per-origin: a user joining a remote room stays signed in on
+  their own instance (media routes to the host), which is the intended model.

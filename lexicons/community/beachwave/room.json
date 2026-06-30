@@ -13,6 +13,7 @@
           "title": { "type": "string", "maxLength": 120, "description": "Human-readable room title." },
           "description": { "type": "string", "maxLength": 1000, "description": "Optional room summary or agenda." },
           "livekitRoom": { "type": "string", "maxLength": 256, "description": "LiveKit room identifier used for media transport." },
+          "serviceEndpoint": { "type": "string", "format": "uri", "description": "Base URL of the host's deployment. Clients join media via <serviceEndpoint>/api/token, so a room is reachable across instances." },
           "status": { "type": "string", "knownValues": ["live", "ended"], "description": "Current lifecycle state." },
           "createdAt": { "type": "string", "format": "datetime" },
           "lastActiveAt": { "type": "string", "format": "datetime", "description": "Host heartbeat. Clients may treat a live room with a stale lastActiveAt as ended." },
