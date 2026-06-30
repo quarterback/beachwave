@@ -6,13 +6,31 @@ The [live demo](https://beachwave.app/) shows the full loop working — but it i
 
 Identity comes from ATProto via OAuth, room metadata lives in ATProto records, and media transport is handled separately by LiveKit. The browser client consumes the SDK exactly as any third-party application would — so the demo is proof of the stack, and the repo is the thing you fork, deploy, and adapt.
 
-## What it demonstrates
+## What makes it different
 
-* fork — clone the repo and run your own instance
-* deploy — ship the static client to Vercel or Netlify
-* authenticate — sign in with Bluesky / ATProto OAuth
-* publish — write `community.beachwave.room` records to your repository
-* create / join / share / end — the full live-audio room loop over LiveKit
+Most live-audio apps own your identity, your rooms, and your audience. Beachwave doesn't:
+
+* **Your identity, not an app account.** You sign in with your existing ATProto / Bluesky account via OAuth — there is no Beachwave account to create.
+* **Rooms are records you own.** A room is a `community.beachwave.room` record in *your* repository: portable data any client can read, not a row in someone's private database.
+* **Discovery rides your social graph.** Going live can publish a Bluesky post, so your followers see it in the timeline they already read. There is no walled-garden directory — and the "live now from people you follow" lobby is built from the follow graph with no backend.
+* **Forkable and federated — including the audio.** Anyone can run their own instance. Because each room record says where its media lives (`serviceEndpoint`), a room created on one instance can be discovered *and joined* from another. The protocol interoperates end to end; the reference app is just one client.
+* **Media is a swappable layer.** LiveKit handles transport behind a narrow boundary; the open part is the ATProto record layer. Another developer can build a completely different client over the same lexicon and SDK.
+
+The contrast with "invite everyone to a Discord stream": no server to stand up, no separate account, no central owner — you post, and your existing audience joins with their own identity.
+
+## What works today
+
+* Sign in with ATProto OAuth (DPoP, PAR — modern flow, no app passwords required)
+* Create / share / join / end live audio rooms backed by ATProto records
+* Real-time audio over LiveKit with live participant presence and speaking indicators
+* Accessible in-room text chat (an `aria-live` feed over the LiveKit data channel)
+* Request to speak with host approval, plus host moderation: invite, mute (move to audience), and remove
+* Share a room to your Bluesky feed (a post with a tap-to-join link)
+* "Live now" discovery from accounts you follow, with a heartbeat/TTL so stale rooms drop off
+* Cross-instance interop: discover and join rooms hosted on other deployments
+* Installable as a PWA
+
+For the full design history and rationale behind each piece, see [`docs/aar.md`](docs/aar.md); for the protocol itself, [`docs/protocol.md`](docs/protocol.md).
 
 ## Components
 
