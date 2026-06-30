@@ -2,7 +2,7 @@
 
 Beachwave is a forkable reference implementation for live audio on ATProto. It demonstrates how to authenticate with ATProto OAuth, create room records in ATProto repositories, and connect participants through LiveKit audio transport.
 
-The [hosted demo](https://beachwave-git-claude-beachwave-atp-0220aa-quarterbacks-projects.vercel.app/) shows the full loop working. The repository provides the reusable pieces: lexicon, SDK, media boundary, browser client, and deployment pattern.
+The [live demo](https://beachwave.app/) shows the full loop working — but it is only a demonstration. The point is the repository: fork it and run your own instance. It provides the reusable pieces: lexicon, SDK, media boundary, browser client, and deployment pattern.
 
 Identity comes from ATProto via OAuth, room metadata lives in ATProto records, and media transport is handled separately by LiveKit. The browser client consumes the SDK exactly as any third-party application would — so the demo is proof of the stack, and the repo is the thing you fork, deploy, and adapt.
 
@@ -25,7 +25,7 @@ Identity comes from ATProto via OAuth, room metadata lives in ATProto records, a
 
 ## Authentication
 
-The client signs in with ATProto OAuth. Local development works out of the box (it uses ATProto's loopback OAuth client); production needs a hosted `client-metadata.json` (included at the repo root — edit it to your domain). An app-password fallback is available under "Developer options" for local testing only. See `docs/auth.md`.
+The client signs in with ATProto OAuth. Local development works out of the box (it uses ATProto's loopback OAuth client); in production the OAuth client metadata is served automatically from your deployed origin by `api/client-metadata.js` (with a `vercel.json` rewrite), so there's nothing to edit — just deploy somewhere publicly reachable. An app-password fallback is available under "Developer options" for local testing only. See `docs/auth.md`.
 
 ## Development
 
