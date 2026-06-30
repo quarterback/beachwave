@@ -316,6 +316,12 @@ label { display: block; font-weight: 700; font-size: 13px; color: var(--muted); 
 /* Active speaker: a clear lit ring + glow on the avatar and a lit name. */
 .speaker.speaking .avatar { outline: 3px solid var(--sky); outline-offset: 3px; box-shadow: 0 0 22px rgba(79, 176, 224, .65); animation: bwRing 1.5s ease-out infinite; }
 .speaker.speaking .speaker-name { color: var(--sky); }
+/* Host moderation buttons under a participant. */
+.host-actions { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+.mod-btn { font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 8px; background: rgba(255, 255, 255, .1); color: #fff; border: 1px solid rgba(255, 255, 255, .18); box-shadow: none; }
+.mod-btn:hover { background: rgba(255, 255, 255, .18); transform: none; }
+.mod-btn.danger { background: rgba(220, 19, 108, .16); color: var(--pink-l); border-color: rgba(220, 19, 108, .4); }
+.mod-btn.danger:hover { background: rgba(220, 19, 108, .28); }
 .listener-grid { display: flex; flex-wrap: wrap; gap: 16px 10px; padding-bottom: 8px; }
 .listener { text-align: center; width: 58px; }
 .listener .avatar { width: 50px; height: 50px; font-size: 15px; margin: 0 auto 6px; }

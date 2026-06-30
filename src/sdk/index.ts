@@ -21,6 +21,7 @@ export async function createRoom(client: RepositoryClient, input: CreateRoomInpu
     title: input.title.trim(),
     description: input.description?.trim() || undefined,
     livekitRoom: input.livekitRoom ?? makeLiveKitRoomName(client.did, input.title),
+    serviceEndpoint: input.serviceEndpoint?.replace(/\/+$/, '') || undefined,
     status: 'live',
     createdAt: now,
     lastActiveAt: now,

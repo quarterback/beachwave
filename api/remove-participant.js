@@ -1,19 +1,14 @@
-// Vercel serverless function: grant (or revoke) a participant's publish
-// permission in a LiveKit room.
+// Vercel serverless function: remove (kick) a participant from a LiveKit room.
 //
-// A LiveKit participant's publish permission is fixed in the token it joined
-// with; changing it after the fact requires a server-side call with the API
-// secret. This endpoint is how a host promotes a listener to speaker once they
-// approve a "request to speak". LiveKit pushes the updated permission to that
-// participant, whose client can then enable the microphone.
+// Disconnecting a participant is a privileged server action (it needs the API
+// secret), so a host's "Remove" button calls this. LiveKit drops the named
+// participant; their client sees a Disconnected event.
 //
 // Required Vercel environment variables (same as api/token.js):
 //   LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL
 //
-// SECURITY NOTE: like api/token.js, this endpoint currently trusts the caller.
-// Before a public launch, verify that the caller is actually a host of the room
-// (e.g. confirm their ATProto session and check the room record's host list)
-// rather than allowing anyone who can POST here to promote anyone.
+// SECURITY NOTE: like the other media functions, this trusts the caller. Before
+// a public launch, verify the caller is actually a host of the room.
 
 import { RoomServiceClient } from 'livekit-server-sdk';
 
@@ -46,23 +41,17 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'livekitRoom and identity are required' });
     return;
   }
-  const canPublish = body.canPublish !== false; // default to granting
 
-  // RoomServiceClient speaks the HTTPS management API, not the wss media URL.
   const host = url.replace(/^ws/, 'http');
   const svc = new RoomServiceClient(host, apiKey, apiSecret);
   try {
-    await svc.updateParticipant(livekitRoom, identity, undefined, {
-      canPublish,
-      canSubscribe: true,
-      canPublishData: true
-    });
+    await svc.removeParticipant(livekitRoom, identity);
   } catch (error) {
-    res.status(502).json({ error: `Could not update participant: ${error?.message ?? error}` });
+    res.status(502).json({ error: `Could not remove participant: ${error?.message ?? error}` });
     return;
   }
 
-  res.status(200).json({ ok: true, canPublish });
+  res.status(200).json({ ok: true });
 }
 
 function parseBody(body) {

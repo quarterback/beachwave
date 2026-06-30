@@ -103,8 +103,17 @@ function mockRes() {
   r.setHeader = (k, v) => { r.headers[k.toLowerCase()] = v; };
   r.status = (c) => { r.code = c; return r; };
   r.json = (b) => { r.body = b; return r; };
+  r.end = () => { r.ended = true; return r; };
   return r;
 }
+
+test('media endpoints answer CORS preflight so cross-instance joins work', async () => {
+  const res = mockRes();
+  await grantSpeak({ method: 'OPTIONS', headers: {} }, res);
+  assert.equal(res.code, 204);
+  assert.equal(res.headers['access-control-allow-origin'], '*');
+  assert.ok(res.ended);
+});
 
 test('grant-speak validates input and configuration', async () => {
   // Not configured -> 503
@@ -124,6 +133,28 @@ test('grant-speak validates input and configuration', async () => {
   res = mockRes();
   await grantSpeak({ method: 'POST', body: { identity: 'i' } }, res);
   assert.equal(res.code, 400);
+  delete process.env.LIVEKIT_API_KEY;
+  delete process.env.LIVEKIT_API_SECRET;
+  delete process.env.LIVEKIT_URL;
+});
+
+import removeParticipant from '../api/remove-participant.js';
+
+test('remove-participant validates input and configuration', async () => {
+  let res = mockRes();
+  await removeParticipant({ method: 'POST', body: { livekitRoom: 'r', identity: 'i' } }, res);
+  assert.equal(res.code, 503); // not configured
+
+  res = mockRes();
+  await removeParticipant({ method: 'GET' }, res);
+  assert.equal(res.code, 405);
+
+  process.env.LIVEKIT_API_KEY = 'k';
+  process.env.LIVEKIT_API_SECRET = 'sssssssssssssssssssssssssssssss';
+  process.env.LIVEKIT_URL = 'wss://demo.livekit.cloud';
+  res = mockRes();
+  await removeParticipant({ method: 'POST', body: { livekitRoom: 'r' } }, res);
+  assert.equal(res.code, 400); // missing identity
   delete process.env.LIVEKIT_API_KEY;
   delete process.env.LIVEKIT_API_SECRET;
   delete process.env.LIVEKIT_URL;

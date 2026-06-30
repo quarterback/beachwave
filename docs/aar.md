@@ -449,3 +449,94 @@ out.
   reconcile liveness against LiveKit room state instead.
 * Discovery currently surfaces public rooms only; invite-only rooms would need a
   room-record allowlist and a server-side token check.
+
+---
+
+# Milestone 7 — Host moderation and a request-delivery fix
+
+## Summary
+
+Multi-user testing surfaced two gaps: the host never saw incoming "request to
+speak" signals, and a room owner had no moderation powers. This pass fixes the
+signal delivery and gives hosts real control: promote, mute (move to audience),
+and remove (kick).
+
+## What was done
+
+### Request-delivery fix
+
+Control messages (request/decision) were routed by the LiveKit data-channel
+`topic`. Topic propagation can vary, so a request could arrive with no topic and
+fall through to the chat decoder, which silently dropped it — the host never saw
+it. Routing is now by message *content* (`decodeControl` first, then
+`decodeChat`); the payloads are self-describing, so delivery no longer depends on
+topic propagation.
+
+### Host moderation
+
+* `api/grant-speak.js` already toggled publish permission, so "mute" is a demote
+  (`canPublish: false`) and "invite"/approve is a promote (`canPublish: true`).
+* Added `api/remove-participant.js` (`RoomServiceClient.removeParticipant`) to
+  kick a participant; the controller gained `removeParticipant()`.
+* The room roster now shows host-only buttons on every remote participant:
+  **Invite** (promote a listener), **Mute** (move a speaker to the audience), and
+  **Remove** (kick). They appear only for a user who can administer the room.
+
+## Validation performed
+
+* `npm run build` and `npm test` pass (26 tests; added remove-participant
+  endpoint validation).
+* The control-routing fix is logic that unit tests already cover via the codec;
+  the end-to-end promote/mute/remove flow still needs a real two-user session.
+
+## Known limitations / next steps
+
+* The three media functions (`token`, `grant-speak`, `remove-participant`) still
+  trust the caller. Host-authority verification (confirm the caller's ATProto
+  session and the room's host list server-side) is the main hardening task before
+  a public launch.
+* "Mute" demotes to listener rather than force-muting a still-published track;
+  that is the stronger moderation action and needs no track lookup, but a
+  keep-on-stage mute could be added later.
+
+---
+
+# Milestone 8 — Cross-instance media (forkable interoperability)
+
+## Summary
+
+Forking works, but live audio was implicitly bound to one deployment: a room
+discovered on instance B would mint its token on B's LiveKit project, not the
+host's, so participants wouldn't actually share audio. This pass makes the room
+record say where its media lives, so any fork can join any room's audio.
+
+## What was done
+
+* Added optional `serviceEndpoint` (the host deployment's base URL) to the room
+  lexicon, types, and validation. `createRoom` stamps it; the client passes
+  `window.location.origin`.
+* The client now picks a per-room controller (`controllerFor`): your own / same
+  -origin rooms use the local endpoints; a room whose `serviceEndpoint` is a
+  different origin is joined through `<serviceEndpoint>/api/token` (and
+  `/api/grant-speak`, `/api/remove-participant` for moderation). All media and
+  moderation calls route through that controller.
+* The three media functions (`token`, `grant-speak`, `remove-participant`) now
+  answer CORS preflight and allow cross-origin POSTs, so a guest on another
+  deployment can reach the host's endpoints.
+* Documented the model in `protocol.md`: the ATProto record layer stays fully
+  portable; `serviceEndpoint` tells any client where the media lives.
+
+## Validation performed
+
+* `npm run build` and `npm test` pass (28 tests; added `serviceEndpoint`
+  persistence and a CORS-preflight test).
+
+## Known limitations / next steps
+
+* `serviceEndpoint` is derived as `<origin>/api/...`; a fork that serves the API
+  under non-default paths would need to advertise those explicitly.
+* CORS is `*` on the media endpoints — necessary for cross-instance joins and
+  consistent with the existing "trusts the caller" posture, but it reinforces
+  that server-side host-authority verification is the key pre-launch hardening.
+* OAuth sessions are per-origin: a user joining a remote room stays signed in on
+  their own instance (media routes to the host), which is the intended model.

@@ -21,7 +21,12 @@ See `docs/auth.md` for the full OAuth implementation. Authentication is a client
 * **Lifecycle:** created with `status: "live"`, updated to `status: "ended"` with `endedAt` when closed
 * **Interoperability:** clients should treat ATProto as authoritative for title, lifecycle state, host identity, and discovery; clients should not require reference-client-specific fields
 
-Required fields are `title`, `livekitRoom`, `createdAt`, and `status`. Optional fields include `description`, `endedAt`, and `hosts`.
+Required fields are `title`, `livekitRoom`, `createdAt`, and `status`. Optional fields include `description`, `lastActiveAt`, `endedAt`, `hosts`, and `serviceEndpoint`.
+
+## Liveness and cross-instance media
+
+* `lastActiveAt` is a host heartbeat. A client may treat a `live` room whose `lastActiveAt` is stale as ended, so a host that disconnects without closing the room ages out of discovery. Records without `lastActiveAt` fall back to status only.
+* `serviceEndpoint` is the base URL of the host's deployment. Because media tokens can only be minted by the deployment holding that room's media credentials, a client joining a room it discovered elsewhere should obtain its media token from `<serviceEndpoint>/api/token` rather than its own. This keeps the ATProto record layer fully portable while letting live audio span instances: any client can read the record, and the record says where the media lives.
 
 ## SDK contract
 
