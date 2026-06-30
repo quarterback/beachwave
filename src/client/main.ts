@@ -1,4 +1,5 @@
 import {
+  addRoomHost,
   announceRoom,
   createRoom,
   discoverLiveRooms,
@@ -8,6 +9,7 @@ import {
   leaveRoom,
   listFollowDids,
   listRooms,
+  removeRoomHost,
   touchRoom,
   ROOM_LIVE_TTL_MS,
   HttpMediaTokenProvider,
@@ -624,6 +626,7 @@ async function connectMedia(livekitRoom: string, role: ParticipantRole): Promise
     mediaUnsubscribers.push(mediaSession.onChat(appendChatMessage));
     mediaUnsubscribers.push(mediaSession.onSpeakRequest(handleSpeakRequest));
     mediaUnsubscribers.push(mediaSession.onSpeakDecision(handleSpeakDecision));
+    mediaUnsubscribers.push(mediaSession.onRoleUpdate(handleRoleUpdate));
     setupChatForm();
     app!.querySelector<HTMLElement>('#chat')!.hidden = false;
   } catch (error) {
@@ -750,6 +753,18 @@ function handleSpeakDecision(decision: { target: string; approved: boolean }): v
   }
 }
 
+/** Someone changed your room role; re-read the record so the UI reflects it. */
+async function handleRoleUpdate(target: string): Promise<void> {
+  if (target !== account!.did || !activeRoom) return;
+  try {
+    activeRoom = await getRoom(account!.client, activeRoom.uri);
+    setStatus(canAdminister(activeRoom) ? 'You are now a room moderator.' : 'Your moderator role was removed.');
+    if (mediaSession) onRoomState(mediaSession.getState());
+  } catch {
+    // Non-fatal; the role will be reflected on the next join.
+  }
+}
+
 function renderRequests(): void {
   const section = app!.querySelector<HTMLElement>('#requests-section');
   const list = app!.querySelector<HTMLElement>('#requests');
@@ -845,8 +860,7 @@ function renderParticipants(state: MediaRoomState): void {
 
     const role = document.createElement('div');
     role.className = `speaker-role${participant.isSpeaking ? ' live' : ''}`;
-    // Show "speaking" for anyone talking, including yourself — that's the live cue.
-    role.textContent = participant.isSpeaking ? 'speaking' : participant.isLocal ? 'you' : 'speaker';
+    role.textContent = roleLabel(participant);
 
     item.append(avatar, name, role);
     const actions = hostActions(participant, true);
@@ -871,10 +885,40 @@ function renderParticipants(state: MediaRoomState): void {
     name.textContent = participant.name || shortDid(participant.identity);
 
     item.append(avatar, name);
+    const badge = listenerBadge(participant);
+    if (badge) {
+      const roleEl = document.createElement('div');
+      roleEl.className = 'speaker-role';
+      roleEl.textContent = badge;
+      item.append(roleEl);
+    }
     const actions = hostActions(participant, false);
     if (actions) item.append(actions);
     return item;
   }));
+}
+
+/** Role text for a speaker card. */
+function roleLabel(participant: MediaParticipant): string {
+  if (participant.isSpeaking) return 'speaking';
+  if (activeRoom && participant.identity === activeRoom.authorDid) return 'host';
+  if (isModerator(participant.identity)) return 'moderator';
+  return participant.isLocal ? 'you' : 'speaker';
+}
+
+/** Role text for a listener card, shown only for notable roles. */
+function listenerBadge(participant: MediaParticipant): string {
+  if (activeRoom && participant.identity === activeRoom.authorDid) return 'host';
+  if (isModerator(participant.identity)) return 'moderator';
+  return participant.isLocal ? 'you' : '';
+}
+
+function isRoomOwner(room: BeachwaveRoom): boolean {
+  return room.authorDid === account!.did;
+}
+
+function isModerator(did: string): boolean {
+  return !!activeRoom && did !== activeRoom.authorDid && (activeRoom.record.hosts ?? []).includes(did);
 }
 
 /** Host-only moderation buttons for a remote participant (null otherwise). */
@@ -886,9 +930,17 @@ function hostActions(participant: MediaParticipant, isSpeaker: boolean): HTMLEle
   wrap.className = 'host-actions';
   wrap.append(
     isSpeaker
-      ? actionButton('Mute', () => moderate('mute', participant))
+      ? actionButton('Move to audience', () => moderate('demote', participant))
       : actionButton('Invite', () => moderate('invite', participant))
   );
+  // Promoting a co-moderator writes the room record, so only the owner can do it.
+  if (isRoomOwner(activeRoom) && participant.identity !== activeRoom.authorDid) {
+    wrap.append(
+      isModerator(participant.identity)
+        ? actionButton('Remove mod', () => moderate('demote-mod', participant))
+        : actionButton('Make mod', () => moderate('promote-mod', participant))
+    );
+  }
   wrap.append(actionButton('Remove', () => moderate('remove', participant), true));
   return wrap;
 }
@@ -902,7 +954,10 @@ function actionButton(label: string, onClick: () => void, danger = false): HTMLB
   return button;
 }
 
-async function moderate(action: 'invite' | 'mute' | 'remove', participant: MediaParticipant): Promise<void> {
+async function moderate(
+  action: 'invite' | 'demote' | 'remove' | 'promote-mod' | 'demote-mod',
+  participant: MediaParticipant
+): Promise<void> {
   if (!activeController || !activeRoom) return;
   const livekitRoom = activeRoom.record.livekitRoom;
   const who = participant.name || shortDid(participant.identity);
@@ -911,12 +966,22 @@ async function moderate(action: 'invite' | 'mute' | 'remove', participant: Media
       await activeController.grantSpeaker({ livekitRoom, identity: participant.identity, canPublish: true });
       await mediaSession?.decideSpeak(participant.identity, true);
       setStatus(`Invited ${who} to speak.`);
-    } else if (action === 'mute') {
+    } else if (action === 'demote') {
       await activeController.grantSpeaker({ livekitRoom, identity: participant.identity, canPublish: false });
       setStatus(`Moved ${who} to the audience.`);
-    } else {
+    } else if (action === 'remove') {
       await activeController.removeParticipant({ livekitRoom, identity: participant.identity });
       setStatus(`Removed ${who}.`);
+    } else if (action === 'promote-mod') {
+      activeRoom = await addRoomHost(account!.client, activeRoom.uri, participant.identity);
+      await mediaSession?.notifyRoleUpdate(participant.identity);
+      setStatus(`Made ${who} a moderator.`);
+      if (mediaSession) onRoomState(mediaSession.getState());
+    } else if (action === 'demote-mod') {
+      activeRoom = await removeRoomHost(account!.client, activeRoom.uri, participant.identity);
+      await mediaSession?.notifyRoleUpdate(participant.identity);
+      setStatus(`Removed ${who} as moderator.`);
+      if (mediaSession) onRoomState(mediaSession.getState());
     }
   } catch (error) {
     setStatus(describeError(error));

@@ -190,3 +190,8 @@ test('room-page injects per-room Open Graph tags and still serves the app', asyn
     globalThis.fetch = realFetch;
   }
 });
+
+test('control codec carries role-update pings', () => {
+  assert.deepEqual(decodeControl(encodeControl({ t: 'role-update', target: 'did:plc:abc' })), { t: 'role-update', target: 'did:plc:abc' });
+  assert.equal(decodeControl(new TextEncoder().encode(JSON.stringify({ t: 'role-update' }))), null);
+});

@@ -89,6 +89,10 @@ export interface MediaSession {
   onSpeakRequest(listener: (request: SpeakRequest) => void): () => void;
   /** Subscribe to host decisions (requester receives these). */
   onSpeakDecision(listener: (decision: SpeakDecision) => void): () => void;
+  /** Tell a participant their room role changed, so their client can refresh it. */
+  notifyRoleUpdate(target: string): Promise<void>;
+  /** Subscribe to role-change pings for this client (target is the affected DID). */
+  onRoleUpdate(listener: (target: string) => void): () => void;
   /** Current presence snapshot. */
   getState(): MediaRoomState;
   /** Subscribe to presence/speaking changes. Fires immediately with current state. Returns an unsubscribe function. */

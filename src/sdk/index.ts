@@ -41,6 +41,28 @@ export async function touchRoom(client: RepositoryClient, uri: string): Promise<
   return toRoom(updated.uri, updated.cid, record);
 }
 
+/** Add a moderator (co-host) DID to a room. Owner action — writes the owner's record. */
+export async function addRoomHost(client: RepositoryClient, uri: string, did: string): Promise<BeachwaveRoom> {
+  const existing = await client.getRecord(uri);
+  const value = existing.value as BeachwaveRoomRecord;
+  const hosts = Array.from(new Set([...(value.hosts ?? []), did]));
+  const record = { ...value, hosts };
+  assertRoomRecord(record);
+  const updated = await client.updateRecord(uri, record);
+  return toRoom(updated.uri, updated.cid, record);
+}
+
+/** Remove a moderator DID from a room. Owner action. */
+export async function removeRoomHost(client: RepositoryClient, uri: string, did: string): Promise<BeachwaveRoom> {
+  const existing = await client.getRecord(uri);
+  const value = existing.value as BeachwaveRoomRecord;
+  const hosts = (value.hosts ?? []).filter((host) => host !== did);
+  const record = { ...value, hosts };
+  assertRoomRecord(record);
+  const updated = await client.updateRecord(uri, record);
+  return toRoom(updated.uri, updated.cid, record);
+}
+
 /** Whether a room should be presented as joinable right now. */
 export function isRoomLive(record: BeachwaveRoomRecord, now: number = Date.now(), ttlMs: number = ROOM_LIVE_TTL_MS): boolean {
   if (record.status !== 'live') return false;
