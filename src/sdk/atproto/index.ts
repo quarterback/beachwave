@@ -1,6 +1,6 @@
 // Public surface of the ATProto integration layer.
 
-export { type AtprotoAgent, readJson } from './agent.js';
+export { type AtprotoAgent, readJson, createServiceAuth } from './agent.js';
 export { OAuthClient, type OAuthClientConfig } from './oauth-client.js';
 export { OAuthSession } from './oauth-session.js';
 export { AppPasswordSession } from './app-password.js';

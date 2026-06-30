@@ -38,11 +38,23 @@ const app = document.querySelector<HTMLDivElement>('#root');
 if (!app) throw new Error('Missing #root element');
 
 const oauth = new OAuthClient(resolveOAuthConfig());
+
+// Lexicon method the server verifies service-auth tokens against. When the
+// deployer enables host-authority checks (BEACHWAVE_VERIFY_AUTH=1), the media
+// and moderation endpoints require a token minted for this method.
+const MODERATION_LXM = 'community.beachwave.moderate';
+
+/** Mint a service-auth JWT for the current account, or null when unavailable. */
+function getAuthToken(): Promise<string | null> {
+  return account ? account.serviceAuth(MODERATION_LXM) : Promise.resolve(null);
+}
+
 const mediaTokenEndpoint = resolveMediaTokenEndpoint();
 const mediaController: LiveKitMediaController | undefined = mediaTokenEndpoint
-  ? new LiveKitMediaController(new HttpMediaTokenProvider(mediaTokenEndpoint), {
+  ? new LiveKitMediaController(new HttpMediaTokenProvider(mediaTokenEndpoint, getAuthToken), {
       grantEndpoint: resolveSpeakGrantEndpoint(),
-      removeEndpoint: resolveRemoveEndpoint()
+      removeEndpoint: resolveRemoveEndpoint(),
+      getAuthToken
     })
   : undefined;
 
@@ -563,7 +575,8 @@ async function connectMedia(livekitRoom: string, role: ParticipantRole): Promise
       livekitRoom,
       identity: account!.did,
       displayName: account!.label,
-      role
+      role,
+      roomUri: activeRoom?.uri
     });
 
     // Reset per-room moderation state for this fresh session.
@@ -596,9 +609,10 @@ function controllerFor(room: BeachwaveRoom | undefined): LiveKitMediaController 
   const endpoint = room.record.serviceEndpoint;
   if (endpoint && !isSameOrigin(endpoint)) {
     const base = endpoint.replace(/\/+$/, '');
-    return new LiveKitMediaController(new HttpMediaTokenProvider(`${base}/api/token`), {
+    return new LiveKitMediaController(new HttpMediaTokenProvider(`${base}/api/token`, getAuthToken), {
       grantEndpoint: `${base}/api/grant-speak`,
-      removeEndpoint: `${base}/api/remove-participant`
+      removeEndpoint: `${base}/api/remove-participant`,
+      getAuthToken
     });
   }
   return mediaController;
@@ -751,7 +765,7 @@ async function decideRequest(request: SpeakRequest, approved: boolean): Promise<
   renderRequests();
   try {
     if (approved) {
-      await activeController!.grantSpeaker({ livekitRoom: activeRoom!.record.livekitRoom, identity: request.identity });
+      await activeController!.grantSpeaker({ livekitRoom: activeRoom!.record.livekitRoom, identity: request.identity, roomUri: activeRoom!.uri });
     }
     await mediaSession!.decideSpeak(request.identity, approved);
     setStatus(approved ? `Approved ${request.name || 'guest'} to speak.` : 'Request declined.');
@@ -903,7 +917,7 @@ async function muteAll(): Promise<void> {
   let moved = 0;
   for (const participant of targets) {
     try {
-      await activeController.grantSpeaker({ livekitRoom: activeRoom.record.livekitRoom, identity: participant.identity, canPublish: false });
+      await activeController.grantSpeaker({ livekitRoom: activeRoom.record.livekitRoom, identity: participant.identity, canPublish: false, roomUri: activeRoom.uri });
       moved += 1;
     } catch {
       // continue with the rest
@@ -920,7 +934,7 @@ async function toggleOpenMic(on: boolean): Promise<void> {
       const listeners = mediaSession.getState().participants.filter((p) => !p.canSpeak && !p.isLocal && !isAdminDid(p.identity));
       for (const participant of listeners) {
         try {
-          await activeController.grantSpeaker({ livekitRoom: activeRoom.record.livekitRoom, identity: participant.identity, canPublish: true });
+          await activeController.grantSpeaker({ livekitRoom: activeRoom.record.livekitRoom, identity: participant.identity, canPublish: true, roomUri: activeRoom.uri });
         } catch {
           // continue
         }
@@ -998,14 +1012,14 @@ async function moderate(
   const who = participant.name || shortDid(participant.identity);
   try {
     if (action === 'invite') {
-      await activeController.grantSpeaker({ livekitRoom, identity: participant.identity, canPublish: true });
+      await activeController.grantSpeaker({ livekitRoom, identity: participant.identity, canPublish: true, roomUri: activeRoom.uri });
       await mediaSession?.decideSpeak(participant.identity, true);
       setStatus(`Invited ${who} to speak.`);
     } else if (action === 'demote') {
-      await activeController.grantSpeaker({ livekitRoom, identity: participant.identity, canPublish: false });
+      await activeController.grantSpeaker({ livekitRoom, identity: participant.identity, canPublish: false, roomUri: activeRoom.uri });
       setStatus(`Moved ${who} to the audience.`);
     } else if (action === 'remove') {
-      await activeController.removeParticipant({ livekitRoom, identity: participant.identity });
+      await activeController.removeParticipant({ livekitRoom, identity: participant.identity, roomUri: activeRoom.uri });
       setStatus(`Removed ${who}.`);
     } else if (action === 'promote-mod') {
       activeRoom = await addRoomHost(account!.client, activeRoom.uri, participant.identity);

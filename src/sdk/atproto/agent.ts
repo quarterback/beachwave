@@ -21,6 +21,29 @@ export interface AtprotoAgent {
   signOut(): Promise<void>;
 }
 
+/**
+ * Mint an ATProto service-auth JWT (com.atproto.server.getServiceAuth), signed
+ * by the user's repo key, for authenticating a request to a Beachwave endpoint.
+ * Best-effort: returns null if the session cannot mint one.
+ */
+export async function createServiceAuth(
+  agent: AtprotoAgent,
+  lxm: string,
+  aud: string,
+  ttlSeconds = 60
+): Promise<string | null> {
+  const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
+  const query = new URLSearchParams({ aud, lxm, exp: String(exp) });
+  try {
+    const res = await agent.fetch(`/xrpc/com.atproto.server.getServiceAuth?${query}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { token?: string };
+    return data.token ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Read a JSON response body, throwing a useful error on non-2xx replies. */
 export async function readJson<T = unknown>(res: Response): Promise<T> {
   const text = await res.text();

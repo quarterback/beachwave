@@ -13,21 +13,23 @@
 // The browser client posts { livekitRoom, identity, displayName, role } and
 // expects { url, token } back (see src/sdk/media/).
 //
-// SECURITY NOTE: this endpoint currently trusts the caller's identity and role.
-// Anyone who can POST here can obtain a token for any room. That is acceptable
-// for early dogfooding but should be hardened before a public launch by
-// verifying the caller's ATProto session (e.g. require the OAuth access token
-// and confirm `identity` matches the authenticated DID) and deriving `role`
-// server-side from the room's host list rather than trusting the client.
+// Identity verification is opt-in via BEACHWAVE_VERIFY_AUTH=1. When enabled, the
+// caller must present a valid ATProto service-auth JWT; the token is then bound
+// to the verified DID and publish permission is derived from the room record
+// (hosts always, others only in open-mic rooms), so a client cannot impersonate
+// another account or grant itself the mic. When disabled (default), the endpoint
+// trusts the caller, which is acceptable for early dogfooding.
 
 import { AccessToken } from 'livekit-server-sdk';
+import { resolveRoomRecord } from '../lib/room.js';
+import { isHost, verifyCaller, REQUIRE_AUTH } from '../lib/auth.js';
 
 export default async function handler(req, res) {
   // Allow cross-origin calls so a room is joinable from another Beachwave
   // deployment (the room record advertises this endpoint as its serviceEndpoint).
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'content-type');
+  res.setHeader('Access-Control-Allow-Headers', 'content-type, authorization');
   if (req.method === 'OPTIONS') {
     res.status(204).end();
     return;
@@ -47,13 +49,30 @@ export default async function handler(req, res) {
 
   const body = parseBody(req.body);
   const livekitRoom = typeof body.livekitRoom === 'string' ? body.livekitRoom : '';
-  const identity = typeof body.identity === 'string' ? body.identity : '';
+  let identity = typeof body.identity === 'string' ? body.identity : '';
+  let canPublish = body.role === 'host' || body.role === 'speaker';
+
+  if (REQUIRE_AUTH) {
+    const caller = await verifyCaller(req);
+    if (!caller) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    identity = caller.did; // bind the token to the verified caller
+    const room = await resolveRoomRecord(body.roomUri);
+    if (!room || room.value.livekitRoom !== livekitRoom) {
+      res.status(403).json({ error: 'Room does not match the authenticated request' });
+      return;
+    }
+    // Server decides who may speak: hosts always, others only in open-mic rooms.
+    canPublish = isHost(caller.did, room) || room.value.openMic === true;
+  }
+
   if (!livekitRoom || !identity) {
     res.status(400).json({ error: 'livekitRoom and identity are required' });
     return;
   }
 
-  const canPublish = body.role === 'host' || body.role === 'speaker';
   const token = new AccessToken(apiKey, apiSecret, {
     identity,
     name: typeof body.displayName === 'string' ? body.displayName : undefined,
