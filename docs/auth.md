@@ -59,9 +59,11 @@ configuration change in `src/client/config.ts` (and the hosted client metadata).
 
 ATProto identifies OAuth clients by a URL that resolves to a metadata document.
 
-* **Production:** `client-metadata.json` is served at the site root, and
-  `client_id` is its public URL (`https://<host>/client-metadata.json`). Edit
-  that file so every URL inside it matches your deployed origin.
+* **Production:** `client_id` is `https://<host>/client-metadata.json`. On Vercel
+  that path is served by `api/client-metadata.js` (via a `vercel.json` rewrite),
+  which derives every URL in the document from the request's Host header — so it
+  matches any deployed origin automatically with nothing to edit. On other static
+  hosts, serve an equivalent `client-metadata.json` whose URLs match your origin.
 * **Local development:** on `localhost`/`127.0.0.1` the client uses ATProto's
   special loopback client, encoding the redirect URI and scope directly into the
   `client_id`. No hosted document is required — `npm run dev` works out of the
