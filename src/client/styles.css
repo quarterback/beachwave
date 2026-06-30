@@ -241,6 +241,8 @@ label { display: block; font-weight: 700; font-size: 13px; color: var(--muted); 
 .lp-footer-cols div > a, .lp-footer-cols div > span { display: block; font-size: 14.5px; color: rgba(255, 255, 255, .72); font-weight: 600; margin-bottom: 10px; }
 .lp-footer-cols a:hover { color: #fff; }
 .lp-footer-base { max-width: 1240px; margin: 36px auto 0; padding-top: 22px; border-top: 1px solid rgba(255, 255, 255, .08); font-size: 13px; color: rgba(255, 255, 255, .4); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.lp-footer-base a { color: rgba(255, 255, 255, .6); }
+.lp-footer-base a:hover { color: #fff; }
 
 .status { color: var(--pink); min-height: 1.2rem; font-weight: 700; font-size: 14px; margin: 14px 0 0; }
 .panel-dark .status { color: var(--pink-l); }
