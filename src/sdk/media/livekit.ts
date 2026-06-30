@@ -21,14 +21,27 @@ import { CONTROL_TOPIC, decodeControl, encodeControl, type SpeakDecision, type S
 
 const LIVEKIT_CLIENT_URL = 'https://esm.sh/livekit-client@2';
 
+/** Optionally mints a service-auth JWT for authenticating endpoint calls. */
+export type AuthTokenProvider = () => Promise<string | null>;
+
+function authHeaders(token: string | null): Record<string, string> {
+  const headers: Record<string, string> = { 'content-type': 'application/json', accept: 'application/json' };
+  if (token) headers.authorization = `Bearer ${token}`;
+  return headers;
+}
+
 /** Fetches media grants from a deployer-operated token endpoint. */
 export class HttpMediaTokenProvider implements MediaTokenProvider {
-  constructor(private readonly endpoint: string) {}
+  constructor(
+    private readonly endpoint: string,
+    private readonly getAuthToken?: AuthTokenProvider
+  ) {}
 
   async getGrant(request: MediaJoinRequest): Promise<MediaGrant> {
+    const token = this.getAuthToken ? await this.getAuthToken() : null;
     const res = await fetch(this.endpoint, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      headers: authHeaders(token),
       body: JSON.stringify(request)
     });
     if (!res.ok) throw new Error(`Media token request failed (${res.status})`);
@@ -43,6 +56,8 @@ export interface LiveKitControllerOptions {
   grantEndpoint?: string;
   /** Endpoint that removes (kicks) a participant from the room (host-only). */
   removeEndpoint?: string;
+  /** Mints a service-auth JWT so the server can verify host authority. */
+  getAuthToken?: AuthTokenProvider;
 }
 
 export class LiveKitMediaController implements MediaController {
@@ -52,27 +67,30 @@ export class LiveKitMediaController implements MediaController {
   ) {}
 
   /** Promote (canPublish true) or demote/mute (canPublish false) a participant. */
-  async grantSpeaker(request: { livekitRoom: string; identity: string; canPublish?: boolean }): Promise<void> {
+  async grantSpeaker(request: { livekitRoom: string; identity: string; canPublish?: boolean; roomUri?: string }): Promise<void> {
     if (!this.options.grantEndpoint) throw new Error('No speaker-grant endpoint is configured');
+    const token = this.options.getAuthToken ? await this.options.getAuthToken() : null;
     const res = await fetch(this.options.grantEndpoint, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      headers: authHeaders(token),
       body: JSON.stringify({
         livekitRoom: request.livekitRoom,
         identity: request.identity,
-        canPublish: request.canPublish ?? true
+        canPublish: request.canPublish ?? true,
+        roomUri: request.roomUri
       })
     });
     if (!res.ok) throw new Error(`Speaker grant failed (${res.status})`);
   }
 
   /** Remove (kick) a participant from the room. */
-  async removeParticipant(request: { livekitRoom: string; identity: string }): Promise<void> {
+  async removeParticipant(request: { livekitRoom: string; identity: string; roomUri?: string }): Promise<void> {
     if (!this.options.removeEndpoint) throw new Error('No remove-participant endpoint is configured');
+    const token = this.options.getAuthToken ? await this.options.getAuthToken() : null;
     const res = await fetch(this.options.removeEndpoint, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({ livekitRoom: request.livekitRoom, identity: request.identity })
+      headers: authHeaders(token),
+      body: JSON.stringify({ livekitRoom: request.livekitRoom, identity: request.identity, roomUri: request.roomUri })
     });
     if (!res.ok) throw new Error(`Remove participant failed (${res.status})`);
   }

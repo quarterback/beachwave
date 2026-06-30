@@ -21,6 +21,8 @@ export interface MediaJoinRequest {
   displayName?: string;
   /** Role determines publish permission; hosts and speakers may publish audio. */
   role: ParticipantRole;
+  /** AT URI of the room record, sent so the server can verify host authority. */
+  roomUri?: string;
 }
 
 /** Connection details for a media room, minted by a trusted token service. */

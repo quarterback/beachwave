@@ -10,8 +10,10 @@
 import {
   AppPasswordSession,
   AtprotoRepositoryClient,
+  createServiceAuth,
   OAuthClient,
   OAuthSession,
+  type AtprotoAgent,
   type RepositoryClient
 } from '../sdk/index.js';
 import { BrowserRepositoryClient } from './browser-repository.js';
@@ -25,7 +27,19 @@ export interface Account {
   label: string;
   pds?: string;
   client: RepositoryClient;
+  /** Mint a service-auth JWT for authenticating Beachwave endpoints (null if unavailable). */
+  serviceAuth(lxm: string): Promise<string | null>;
   signOut(): Promise<void>;
+}
+
+/** Audience DID for service-auth tokens; the value is informational since the
+ *  server verifies the signature and host membership, not the audience. */
+function audienceDid(): string {
+  return `did:web:${window.location.host}`;
+}
+
+function sessionServiceAuth(session: AtprotoAgent): (lxm: string) => Promise<string | null> {
+  return (lxm) => createServiceAuth(session, lxm, audienceDid());
 }
 
 export async function restoreAccount(oauth: OAuthClient): Promise<Account | undefined> {
@@ -50,6 +64,7 @@ export async function signInWithAppPassword(identifier: string, password: string
     label: session.handle ?? session.did,
     pds: session.pds,
     client: new AtprotoRepositoryClient(session),
+    serviceAuth: sessionServiceAuth(session),
     signOut: () => session.signOut()
   };
 }
@@ -62,6 +77,7 @@ export function startOfflineDemo(): Account {
     did,
     label: 'Offline demo',
     client,
+    serviceAuth: async () => null,
     signOut: async () => client.clear()
   };
 }
@@ -73,6 +89,7 @@ function oauthAccount(session: OAuthSession): Account {
     label: session.handle ?? session.did,
     pds: session.pds,
     client: new AtprotoRepositoryClient(session),
+    serviceAuth: sessionServiceAuth(session),
     signOut: () => session.signOut()
   };
 }
