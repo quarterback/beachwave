@@ -128,3 +128,25 @@ test('grant-speak validates input and configuration', async () => {
   delete process.env.LIVEKIT_API_SECRET;
   delete process.env.LIVEKIT_URL;
 });
+
+import removeParticipant from '../api/remove-participant.js';
+
+test('remove-participant validates input and configuration', async () => {
+  let res = mockRes();
+  await removeParticipant({ method: 'POST', body: { livekitRoom: 'r', identity: 'i' } }, res);
+  assert.equal(res.code, 503); // not configured
+
+  res = mockRes();
+  await removeParticipant({ method: 'GET' }, res);
+  assert.equal(res.code, 405);
+
+  process.env.LIVEKIT_API_KEY = 'k';
+  process.env.LIVEKIT_API_SECRET = 'sssssssssssssssssssssssssssssss';
+  process.env.LIVEKIT_URL = 'wss://demo.livekit.cloud';
+  res = mockRes();
+  await removeParticipant({ method: 'POST', body: { livekitRoom: 'r' } }, res);
+  assert.equal(res.code, 400); // missing identity
+  delete process.env.LIVEKIT_API_KEY;
+  delete process.env.LIVEKIT_API_SECRET;
+  delete process.env.LIVEKIT_URL;
+});

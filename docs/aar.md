@@ -449,3 +449,52 @@ out.
   reconcile liveness against LiveKit room state instead.
 * Discovery currently surfaces public rooms only; invite-only rooms would need a
   room-record allowlist and a server-side token check.
+
+---
+
+# Milestone 7 — Host moderation and a request-delivery fix
+
+## Summary
+
+Multi-user testing surfaced two gaps: the host never saw incoming "request to
+speak" signals, and a room owner had no moderation powers. This pass fixes the
+signal delivery and gives hosts real control: promote, mute (move to audience),
+and remove (kick).
+
+## What was done
+
+### Request-delivery fix
+
+Control messages (request/decision) were routed by the LiveKit data-channel
+`topic`. Topic propagation can vary, so a request could arrive with no topic and
+fall through to the chat decoder, which silently dropped it — the host never saw
+it. Routing is now by message *content* (`decodeControl` first, then
+`decodeChat`); the payloads are self-describing, so delivery no longer depends on
+topic propagation.
+
+### Host moderation
+
+* `api/grant-speak.js` already toggled publish permission, so "mute" is a demote
+  (`canPublish: false`) and "invite"/approve is a promote (`canPublish: true`).
+* Added `api/remove-participant.js` (`RoomServiceClient.removeParticipant`) to
+  kick a participant; the controller gained `removeParticipant()`.
+* The room roster now shows host-only buttons on every remote participant:
+  **Invite** (promote a listener), **Mute** (move a speaker to the audience), and
+  **Remove** (kick). They appear only for a user who can administer the room.
+
+## Validation performed
+
+* `npm run build` and `npm test` pass (26 tests; added remove-participant
+  endpoint validation).
+* The control-routing fix is logic that unit tests already cover via the codec;
+  the end-to-end promote/mute/remove flow still needs a real two-user session.
+
+## Known limitations / next steps
+
+* The three media functions (`token`, `grant-speak`, `remove-participant`) still
+  trust the caller. Host-authority verification (confirm the caller's ATProto
+  session and the room's host list server-side) is the main hardening task before
+  a public launch.
+* "Mute" demotes to listener rather than force-muting a still-published track;
+  that is the stronger moderation action and needs no track lookup, but a
+  keep-on-stage mute could be added later.

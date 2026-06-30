@@ -41,6 +41,8 @@ export class HttpMediaTokenProvider implements MediaTokenProvider {
 export interface LiveKitControllerOptions {
   /** Endpoint that grants/revokes a participant's publish permission (host-only). */
   grantEndpoint?: string;
+  /** Endpoint that removes (kicks) a participant from the room (host-only). */
+  removeEndpoint?: string;
 }
 
 export class LiveKitMediaController implements MediaController {
@@ -49,7 +51,7 @@ export class LiveKitMediaController implements MediaController {
     private readonly options: LiveKitControllerOptions = {}
   ) {}
 
-  /** Promote (or demote) a participant's publish permission via the grant endpoint. */
+  /** Promote (canPublish true) or demote/mute (canPublish false) a participant. */
   async grantSpeaker(request: { livekitRoom: string; identity: string; canPublish?: boolean }): Promise<void> {
     if (!this.options.grantEndpoint) throw new Error('No speaker-grant endpoint is configured');
     const res = await fetch(this.options.grantEndpoint, {
@@ -62,6 +64,17 @@ export class LiveKitMediaController implements MediaController {
       })
     });
     if (!res.ok) throw new Error(`Speaker grant failed (${res.status})`);
+  }
+
+  /** Remove (kick) a participant from the room. */
+  async removeParticipant(request: { livekitRoom: string; identity: string }): Promise<void> {
+    if (!this.options.removeEndpoint) throw new Error('No remove-participant endpoint is configured');
+    const res = await fetch(this.options.removeEndpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ livekitRoom: request.livekitRoom, identity: request.identity })
+    });
+    if (!res.ok) throw new Error(`Remove participant failed (${res.status})`);
   }
 
   async join(request: MediaJoinRequest): Promise<MediaSession> {
@@ -115,12 +128,11 @@ export class LiveKitMediaController implements MediaController {
       .on(RoomEvent.TrackUnsubscribed, (track: LiveKitTrack) => {
         for (const element of track.detach()) element.remove();
       })
-      .on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: LiveKitParticipant, _kind?: unknown, topic?: string) => {
-        if (topic === CONTROL_TOPIC) {
-          handleControl(payload, participant);
-          return;
-        }
-        if (topic && topic !== CHAT_TOPIC) return;
+      .on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: LiveKitParticipant) => {
+        // Route by message content, not the LiveKit topic: topic propagation can
+        // vary across versions, and the payloads are self-describing (`t`), so the
+        // content is the reliable source of truth.
+        if (handleControl(payload, participant)) return;
         const decoded = decodeChat(payload);
         if (!decoded) return;
         emitChat({
@@ -145,9 +157,9 @@ export class LiveKitMediaController implements MediaController {
       for (const listener of chatListeners) listener(message);
     }
 
-    function handleControl(payload: Uint8Array, participant?: LiveKitParticipant): void {
+    function handleControl(payload: Uint8Array, participant?: LiveKitParticipant): boolean {
       const message = decodeControl(payload);
-      if (!message) return;
+      if (!message) return false;
       if (message.t === 'speak-request') {
         const request: SpeakRequest = {
           identity: participant?.identity ?? 'unknown',
@@ -157,6 +169,7 @@ export class LiveKitMediaController implements MediaController {
       } else if (message.t === 'speak-decision') {
         for (const listener of speakDecisionListeners) listener({ target: message.target, approved: message.approved });
       }
+      return true;
     }
 
     // The microphone is enabled by the caller from a user gesture, not here:

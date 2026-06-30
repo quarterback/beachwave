@@ -52,3 +52,10 @@ export function resolveSpeakGrantEndpoint(): string {
   const value = meta?.content?.trim();
   return value || '/api/grant-speak';
 }
+
+/** Endpoint a host uses to remove (kick) a participant. Defaults to `/api/remove-participant`. */
+export function resolveRemoveEndpoint(): string {
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="beachwave:livekit-remove-endpoint"]');
+  const value = meta?.content?.trim();
+  return value || '/api/remove-participant';
+}

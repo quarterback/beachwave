@@ -15,12 +15,13 @@ import {
   OAuthClient,
   type BeachwaveRoom,
   type ChatMessage,
+  type MediaParticipant,
   type MediaRoomState,
   type MediaSession,
   type ParticipantRole,
   type SpeakRequest
 } from '../sdk/index.js';
-import { resolveMediaTokenEndpoint, resolveOAuthConfig, resolveSpeakGrantEndpoint } from './config.js';
+import { resolveMediaTokenEndpoint, resolveOAuthConfig, resolveRemoveEndpoint, resolveSpeakGrantEndpoint } from './config.js';
 import {
   completeOAuthCallback,
   restoreAccount,
@@ -37,7 +38,8 @@ const oauth = new OAuthClient(resolveOAuthConfig());
 const mediaTokenEndpoint = resolveMediaTokenEndpoint();
 const mediaController: LiveKitMediaController | undefined = mediaTokenEndpoint
   ? new LiveKitMediaController(new HttpMediaTokenProvider(mediaTokenEndpoint), {
-      grantEndpoint: resolveSpeakGrantEndpoint()
+      grantEndpoint: resolveSpeakGrantEndpoint(),
+      removeEndpoint: resolveRemoveEndpoint()
     })
   : undefined;
 
@@ -818,6 +820,8 @@ function renderParticipants(state: MediaRoomState): void {
     role.textContent = participant.isSpeaking ? 'speaking' : participant.isLocal ? 'you' : 'speaker';
 
     item.append(avatar, name, role);
+    const actions = hostActions(participant, true);
+    if (actions) item.append(actions);
     return item;
   }));
 
@@ -838,8 +842,56 @@ function renderParticipants(state: MediaRoomState): void {
     name.textContent = participant.name || shortDid(participant.identity);
 
     item.append(avatar, name);
+    const actions = hostActions(participant, false);
+    if (actions) item.append(actions);
     return item;
   }));
+}
+
+/** Host-only moderation buttons for a remote participant (null otherwise). */
+function hostActions(participant: MediaParticipant, isSpeaker: boolean): HTMLElement | null {
+  if (participant.isLocal || account!.kind === 'offline' || !mediaController) return null;
+  if (!activeRoom || !canAdminister(activeRoom)) return null;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'host-actions';
+  wrap.append(
+    isSpeaker
+      ? actionButton('Mute', () => moderate('mute', participant))
+      : actionButton('Invite', () => moderate('invite', participant))
+  );
+  wrap.append(actionButton('Remove', () => moderate('remove', participant), true));
+  return wrap;
+}
+
+function actionButton(label: string, onClick: () => void, danger = false): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `mod-btn${danger ? ' danger' : ''}`;
+  button.textContent = label;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+async function moderate(action: 'invite' | 'mute' | 'remove', participant: MediaParticipant): Promise<void> {
+  if (!mediaController || !activeRoom) return;
+  const livekitRoom = activeRoom.record.livekitRoom;
+  const who = participant.name || shortDid(participant.identity);
+  try {
+    if (action === 'invite') {
+      await mediaController.grantSpeaker({ livekitRoom, identity: participant.identity, canPublish: true });
+      await mediaSession?.decideSpeak(participant.identity, true);
+      setStatus(`Invited ${who} to speak.`);
+    } else if (action === 'mute') {
+      await mediaController.grantSpeaker({ livekitRoom, identity: participant.identity, canPublish: false });
+      setStatus(`Moved ${who} to the audience.`);
+    } else {
+      await mediaController.removeParticipant({ livekitRoom, identity: participant.identity });
+      setStatus(`Removed ${who}.`);
+    }
+  } catch (error) {
+    setStatus(describeError(error));
+  }
 }
 
 function setupChatForm(): void {
