@@ -1,5 +1,14 @@
 # Beachwave
 
+[![License: EPL 2.0](https://img.shields.io/badge/License-EPL_2.0-blue.svg)](LICENSE)
+[![Live demo](https://img.shields.io/badge/demo-beachwave.app-2b6fd6)](https://beachwave.app/)
+[![Tangled mirror](https://img.shields.io/badge/mirror-Tangled-ff4f00)](https://tangled.org/ronbronson.com/beachwave)
+&nbsp;
+![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?logo=typescript&logoColor=white)
+![AT Protocol](https://img.shields.io/badge/AT_Protocol-0560ff?logo=bluesky&logoColor=white)
+![LiveKit](https://img.shields.io/badge/LiveKit-1fd5f9?logo=livekit&logoColor=black)
+![Vercel](https://img.shields.io/badge/Vercel-000000?logo=vercel&logoColor=white)
+
 Beachwave is a forkable reference implementation for live audio on ATProto. It demonstrates how to authenticate with ATProto OAuth, create room records in ATProto repositories, and connect participants through LiveKit audio transport.
 
 The [live demo](https://beachwave.app/) shows the full loop working. The repository is the deliverable: fork it and run your own instance. It provides the reusable pieces: lexicon, SDK, media boundary, browser client, and deployment pattern.
