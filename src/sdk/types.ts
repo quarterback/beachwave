@@ -8,6 +8,8 @@ export interface BeachwaveRoomRecord {
   livekitRoom: string;
   status: RoomStatus;
   createdAt: string;
+  /** Host heartbeat; a live room with a stale lastActiveAt is treated as ended. */
+  lastActiveAt?: string;
   endedAt?: string;
   hosts?: string[];
 }

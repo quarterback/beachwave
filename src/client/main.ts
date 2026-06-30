@@ -1,11 +1,15 @@
 import {
   announceRoom,
   createRoom,
+  discoverLiveRooms,
   endRoom,
   getRoom,
   joinRoom,
   leaveRoom,
+  listFollowDids,
   listRooms,
+  touchRoom,
+  ROOM_LIVE_TTL_MS,
   HttpMediaTokenProvider,
   LiveKitMediaController,
   OAuthClient,
@@ -51,6 +55,11 @@ let micOn = false;
 let speakRequested = false;
 let controlMode: 'speaker' | 'listener' | undefined;
 const pendingSpeakRequests = new Map<string, SpeakRequest>();
+
+// Host heartbeat: keep the room's lastActiveAt fresh while we're hosting, so it
+// doesn't linger as a ghost in discovery after the tab closes.
+const HEARTBEAT_MS = Math.floor(ROOM_LIVE_TTL_MS / 2);
+let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
 
 void boot();
 
@@ -295,6 +304,15 @@ async function renderApp(): Promise<void> {
 
       <section id="stage" class="stage" hidden></section>
 
+      ${current.kind === 'offline' ? '' : `
+      <section id="live-now" class="live-now" hidden>
+        <div class="yr-head">
+          <h3>Live now · from people you follow</h3>
+          <button id="refresh-live" class="link-btn" type="button">Refresh</button>
+        </div>
+        <div id="live-rooms" class="room-list"></div>
+      </section>`}
+
       <section class="dash-grid">
         <div class="create panel-dark">
           <div class="create-title">Start a room</div>
@@ -332,10 +350,40 @@ async function renderApp(): Promise<void> {
 
   app!.querySelector<HTMLButtonElement>('#sign-out')!.addEventListener('click', handleSignOut);
   app!.querySelector<HTMLButtonElement>('#refresh')!.addEventListener('click', () => void refreshRooms());
+  app!.querySelector<HTMLButtonElement>('#refresh-live')?.addEventListener('click', () => void refreshDiscover());
   app!.querySelector<HTMLFormElement>('#room-form')!.addEventListener('submit', handleCreate);
 
   await refreshRooms();
   await renderPendingSharedRoom();
+  void refreshDiscover();
+}
+
+/** Populate the "Live now" lobby with live rooms from accounts the viewer follows. */
+async function refreshDiscover(): Promise<void> {
+  const current = account;
+  if (!current || current.kind === 'offline') return;
+  const section = app!.querySelector<HTMLElement>('#live-now');
+  const list = app!.querySelector<HTMLElement>('#live-rooms');
+  if (!section || !list) return;
+
+  list.innerHTML = '<p class="empty">Looking for live rooms…</p>';
+  section.hidden = false;
+  try {
+    const follows = await listFollowDids(current.did);
+    if (follows.length === 0) {
+      section.hidden = true;
+      return;
+    }
+    const live = (await discoverLiveRooms(current.client, follows)).filter((room) => room.authorDid !== current.did);
+    if (live.length === 0) {
+      list.innerHTML = '<p class="empty">No one you follow is live right now.</p>';
+      return;
+    }
+    list.replaceChildren(...live.map((room) => renderRoomCard(room, false)));
+  } catch {
+    // Discovery is best-effort; hide the lobby rather than show an error.
+    section.hidden = true;
+  }
 }
 
 async function handleCreate(event: SubmitEvent): Promise<void> {
@@ -527,6 +575,7 @@ async function handleJoin(room: BeachwaveRoom): Promise<void> {
     stage.querySelector('#copy-room')!.addEventListener('click', () => void handleCopy(activeRoom!));
     stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+    startHeartbeat(joined.room);
     await connectMedia(joined.livekitRoom, role);
   } catch (error) {
     setStatus(describeError(error));
@@ -846,6 +895,7 @@ function friendlyName(label: string): string {
 }
 
 async function handleLeave(): Promise<void> {
+  stopHeartbeat();
   await leaveMedia();
   await leaveRoom();
   activeRoom = undefined;
@@ -857,6 +907,22 @@ async function handleLeave(): Promise<void> {
   stage.classList.remove('active');
   stage.innerHTML = '';
   stage.hidden = true;
+}
+
+/** Keep the room's heartbeat fresh while we host it (so discovery stays honest). */
+function startHeartbeat(room: BeachwaveRoom): void {
+  stopHeartbeat();
+  if (account!.kind === 'offline' || !canAdminister(room)) return;
+  heartbeatTimer = setInterval(() => {
+    void touchRoom(account!.client, room.uri).catch(() => {});
+  }, HEARTBEAT_MS);
+}
+
+function stopHeartbeat(): void {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = undefined;
+  }
 }
 
 async function leaveMedia(): Promise<void> {
@@ -903,6 +969,7 @@ async function handleEnd(room: BeachwaveRoom): Promise<void> {
 }
 
 async function handleSignOut(): Promise<void> {
+  stopHeartbeat();
   await leaveMedia();
   await account?.signOut();
   account = undefined;

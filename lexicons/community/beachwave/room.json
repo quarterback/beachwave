@@ -15,6 +15,7 @@
           "livekitRoom": { "type": "string", "maxLength": 256, "description": "LiveKit room identifier used for media transport." },
           "status": { "type": "string", "knownValues": ["live", "ended"], "description": "Current lifecycle state." },
           "createdAt": { "type": "string", "format": "datetime" },
+          "lastActiveAt": { "type": "string", "format": "datetime", "description": "Host heartbeat. Clients may treat a live room with a stale lastActiveAt as ended." },
           "endedAt": { "type": "string", "format": "datetime" },
           "hosts": { "type": "array", "items": { "type": "string", "format": "did" }, "description": "DIDs allowed to administer the room." }
         }
