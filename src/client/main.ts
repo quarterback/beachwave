@@ -119,8 +119,8 @@ function renderSignIn(message = ''): void {
         <a class="lp-brand" href="#top"><img src="beachwave.svg" alt="" /><span>Beachwave</span></a>
         <nav class="lp-links">
           <a href="#signin">Sign in</a>
-          <a class="lp-repo" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">GitHub repo ↗</a>
-          <a class="lp-repo" href="${TANGLED_REPO_URL}" target="_blank" rel="noopener">Tangled mirror ↗</a>
+          <a class="lp-repo" href="${GITHUB_REPO_URL}" target="_blank" rel="noopener">GitHub ↗</a>
+          <a class="lp-repo" href="${TANGLED_REPO_URL}" target="_blank" rel="noopener">Tangled ↗</a>
         </nav>
       </header>
 
