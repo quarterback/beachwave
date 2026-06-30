@@ -53,7 +53,10 @@ function buildMeta(room, url, origin) {
   const live = room.status !== 'ended';
   const title = `${room.title || 'Live room'} · ${live ? 'live' : 'ended'} on Beachwave`;
   const description = room.description || 'A live audio room on Beachwave — sign in with ATProto to join.';
-  const image = `${origin}/beachwave-blue.png`;
+  // Dynamic per-room card drawn by api/og-image; falls back to a branded card
+  // when the room can't be resolved, so the link still previews cleanly.
+  const roomParam = url.slice(url.indexOf('?room=') + '?room='.length);
+  const image = `${origin}/api/og-image?room=${roomParam}`;
   const t = escapeHtml(title);
   const d = escapeHtml(description);
   return [
